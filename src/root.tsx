@@ -1,15 +1,20 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AdminRoutes from "./routes/adminroutes";
+import AuthRoutes from "./routes/authroutes";
 
-// fake auth check (replace later with real logic)
-const isAuthenticated = true; 
+const isAuthenticated = localStorage.getItem("auth") === "true";
 
 export default function Root() {
   return (
     <Routes>
 
+      {/* 🔑 DEFAULT → GO TO LOGIN FIRST */}
+      <Route path="/" element={<Navigate to="/auth/login" replace />} />
 
-      {/* Admin Protected Routes */}
+      {/* AUTH ROUTES */}
+      <Route path="/auth/*" element={<AuthRoutes />} />
+
+      {/* PROTECTED ADMIN */}
       <Route
         path="/*"
         element={
@@ -21,8 +26,8 @@ export default function Root() {
         }
       />
 
-      {/* Edge Case 1: Unknown route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* FALLBACK */}
+      <Route path="*" element={<Navigate to="/auth/login" replace />} />
 
     </Routes>
   );

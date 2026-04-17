@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { ProjectsPage }from "@/pages/admin/projects/ProjectsPage";
+import{ ProjectsPage }from "@/pages/admin/projects/ProjectsPage";
 import { Layout } from "@/components/layout/AppLayout";
 
 export default function AdminRoutes() {
