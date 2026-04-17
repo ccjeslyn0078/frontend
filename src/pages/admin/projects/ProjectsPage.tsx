@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FolderKanban, Layers, FileCheck, Play, Bug, ChevronRight } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useNavigate } from "react-router-dom";
+import { getProjects } from "@/api/project.api";
 
 interface Project {
   id: string;
@@ -16,50 +17,24 @@ export function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const projects: Project[] = [
-    {
-      id: "ecommerce-platform",
-      name: "E-Commerce Platform",
-      description: "Testing suite for the main e-commerce web application",
-      modules: 12,
-      testCases: 245,
-    },
-    {
-      id: "mobile-banking",
-      name: "Mobile Banking App",
-      description: "Comprehensive testing for iOS and Android banking applications",
-      modules: 8,
-      testCases: 189,
-    },
-    {
-      id: "crm-system",
-      name: "CRM System",
-      description: "Customer relationship management platform test suite",
-      modules: 15,
-      testCases: 312,
-    },
-    {
-      id: "analytics-dashboard",
-      name: "Analytics Dashboard",
-      description: "Data visualization and reporting dashboard tests",
-      modules: 6,
-      testCases: 98,
-    },
-    {
-      id: "payment-gateway",
-      name: "Payment Gateway",
-      description: "Payment processing and security testing",
-      modules: 10,
-      testCases: 156,
-    },
-    {
-      id: "inventory-management",
-      name: "Inventory Management",
-      description: "Stock and warehouse management system tests",
-      modules: 9,
-      testCases: 134,
-    },
-  ];
+  // ✅ YOUR EXACT CODE (just placed correctly inside component)
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const data = await getProjects();
+        setProjects(data);
+      } catch (err) {
+        console.error("Failed to fetch projects", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
 
   const options = [
     {
@@ -97,12 +72,17 @@ export function ProjectsPage() {
     }
   };
 
+  // ✅ optional loading (does not change logic)
+  if (loading) return <div className="p-8">Loading...</div>;
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">All Projects</h1>
-          <p className="text-gray-600 mt-1">Select a project to manage test cases, runs, and bugs</p>
+          <p className="text-gray-600 mt-1">
+            Select a project to manage test cases, runs, and bugs
+          </p>
         </div>
         <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
           + New Project
@@ -130,17 +110,21 @@ export function ProjectsPage() {
             <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-600">{project.modules} modules</span>
+                <span className="text-sm text-gray-600">
+                  {project.modules} modules
+                </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">{project.testCases} test cases</span>
+                <span className="text-sm text-gray-600">
+                  {project.testCases} test cases
+                </span>
               </div>
             </div>
           </button>
         ))}
       </div>
 
-      {/* Project Options Modal */}
+      {/* Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

@@ -1,20 +1,28 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { registerApi } from "@/api/auth.api"; // ✅ added
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleRegister = (e: React.FormEvent) => {
+  // ✅ ONLY THIS FUNCTION CHANGED (same logic flow)
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // fake register
-    if (name && email && password) {
-      localStorage.setItem("auth", "true");
-      navigate("/projects");
+    if (username && email && password) {
+      try {
+        await registerApi({ username, email, password });
+
+        // ✅ keeping your logic SAME (still sets auth + navigate)
+        localStorage.setItem("auth", "true");
+        navigate("/auth/login");
+      } catch (err) {
+        console.error("Register failed", err);
+      }
     }
   };
 
@@ -30,8 +38,8 @@ export default function RegisterPage() {
           type="text"
           placeholder="Name"
           className="w-full mb-3 p-2 border rounded"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
 
         <input

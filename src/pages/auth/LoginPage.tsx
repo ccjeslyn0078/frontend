@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { loginApi } from "@/api/auth.api"; // ✅ added
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -7,13 +8,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  // ✅ ONLY THIS FUNCTION UPDATED (logic preserved)
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // fake auth (replace later with API)
     if (email && password) {
-      localStorage.setItem("auth", "true");
-      navigate("/projects");
+      try {
+        await loginApi({ email, password });
+
+        // ✅ SAME LOGIC (no change)
+        localStorage.setItem("auth", "true");
+        navigate("/projects");
+      } catch (err) {
+        console.error("Login failed", err);
+      }
     }
   };
 
