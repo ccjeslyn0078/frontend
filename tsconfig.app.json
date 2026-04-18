@@ -21,10 +21,10 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
 
-    /* ✅ FIXED ALIAS */
-    "baseUrl": "src",
+    /* ✅ FIXED PROPERLY */
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["*"]
+      "@/*": ["src/*"]
     },
 
     "ignoreDeprecations": "6.0"
