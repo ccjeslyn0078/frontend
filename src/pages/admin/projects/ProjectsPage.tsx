@@ -84,8 +84,7 @@ export function ProjectsPage() {
   ];
 
   const handleProjectClick = (project: Project) => {
-    setSelectedProject(project);
-    setIsModalOpen(true);
+  navigate(`/projects/${project.id}/modules`);
   };
 
   const handleOptionClick = (optionId: string) => {
