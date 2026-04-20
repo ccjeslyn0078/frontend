@@ -1,11 +1,9 @@
 import { useState } from "react";
 import {
   FolderKanban,
-  Layers,
   FileCheck,
   Play,
   Bug,
-  ChevronRight,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -25,22 +23,18 @@ export function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Create
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     name: "",
     description: "",
   });
 
-  // Edit
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  // Delete
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  // 🔥 IMPORTANT: now editable
   const [projects, setProjects] = useState<Project[]>([
     {
       id: "1",
@@ -174,15 +168,32 @@ export function ProjectsPage() {
         title={selectedProject?.name || ""}
         size="lg"
       >
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-6">
           {options.map((option) => (
             <button
               key={option.id}
               onClick={() => handleOptionClick(option.id)}
-              className="border p-4 rounded-lg"
+              className="border p-5 rounded-xl text-left hover:shadow-md transition"
             >
-              <option.icon className="w-6 h-6 mb-2" />
-              {option.title}
+              <div
+                className={`w-10 h-10 flex items-center justify-center rounded-lg mb-3 ${
+                  option.color === "blue"
+                    ? "bg-blue-100 text-blue-600"
+                    : option.color === "green"
+                    ? "bg-green-100 text-green-600"
+                    : "bg-red-100 text-red-600"
+                }`}
+              >
+                <option.icon className="w-5 h-5" />
+              </div>
+
+              <h3 className="font-semibold text-gray-900">
+                {option.title}
+              </h3>
+
+              <p className="text-sm text-gray-600 mt-1">
+                {option.description}
+              </p>
             </button>
           ))}
         </div>

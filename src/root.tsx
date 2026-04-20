@@ -9,7 +9,6 @@ export default function Root() {
   return (
     <Routes>
 
-      {/* 🔑 DEFAULT → GO TO LOGIN FIRST */}
 
       {/* AUTH ROUTES */}
       <Route path="/auth/*" element={<AuthRoutes />} />
