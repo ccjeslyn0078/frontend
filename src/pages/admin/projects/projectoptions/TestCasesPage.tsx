@@ -1,6 +1,13 @@
-import { Link, useParams } from "react-router";
-import { Breadcrumb } from "../../../../components/layout/BreadCrumb";
+import { Link, useParams } from "react-router-dom";
 import { Edit, Trash2, Plus } from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/layout/BreadCrumb";
 
 export function TestCaseList() {
   const { projectId, option, moduleId } = useParams();
@@ -77,109 +84,121 @@ export function TestCaseList() {
     }
   };
 
-  return (
-    <div className="p-8">
-      <Breadcrumb
-        items={[
-          { label: "Projects", to: "/projects" },
-          { label: projectName, to: `/projects/${projectId}` },
-          { label: "Test Cases" },
-          { label: moduleName },
-        ]}
-      />
+return (
+  <div className="p-8">
 
-      <div className="mt-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Test Cases - {moduleName}</h1>
-          <p className="text-gray-600 mt-1">{testCases.length} test cases found</p>
-        </div>
-        <Link
-          to={`/projects/${projectId}/${option}/${moduleId}/test-cases/create`}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Create Test Case
-        </Link>
+    {/* Breadcrumb */}
+    <Breadcrumb className="mb-4">
+      <BreadcrumbList>
+
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link to="/projects">Projects</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+
+        <BreadcrumbSeparator />
+
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link to={`/projects/${projectId}/modules`}>
+              {projectName}
+            </Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+
+        <BreadcrumbSeparator />
+
+        <BreadcrumbItem>
+          <BreadcrumbPage>Test Cases</BreadcrumbPage>
+        </BreadcrumbItem>
+
+        <BreadcrumbSeparator />
+
+        <BreadcrumbItem>
+          <BreadcrumbPage>{moduleName}</BreadcrumbPage>
+        </BreadcrumbItem>
+
+      </BreadcrumbList>
+    </Breadcrumb>
+
+    {/* Header */}
+    <div className="mt-8 flex items-center justify-between">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Test Cases - {moduleName}
+        </h1>
+        <p className="text-gray-600 mt-1">
+          {testCases.length} test cases found
+        </p>
       </div>
 
-      {/* Test Cases Table */}
-      <div className="bg-white rounded-lg border border-gray-200 mt-6 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Test Case ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Expected Result
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+      <Link
+        to={`/projects/${projectId}/${option}/${moduleId}/test-cases/create`}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+        Create Test Case
+      </Link>
+    </div>
+
+    {/* Table */}
+    <div className="bg-white rounded-lg border border-gray-200 mt-6 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Test Case ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expected Result</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-gray-200">
+            {testCases.map((testCase) => (
+              <tr key={testCase.id} className="hover:bg-gray-50">
+
+                <td className="px-6 py-4">{testCase.id}</td>
+                <td className="px-6 py-4">{testCase.title}</td>
+                <td className="px-6 py-4">{testCase.description}</td>
+                <td className="px-6 py-4">{testCase.expectedResult}</td>
+
+                <td className="px-6 py-4">
+                  <span className={getPriorityColor(testCase.priority)}>
+                    {testCase.priority}
+                  </span>
+                </td>
+
+                <td className="px-6 py-4">
+                  <span className={getStatusColor(testCase.status)}>
+                    {testCase.status}
+                  </span>
+                </td>
+
+                <td className="px-6 py-4">
+                  <div className="flex gap-2">
+                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button className="p-2 text-red-600 hover:bg-red-50 rounded">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {testCases.map((testCase) => (
-                <tr key={testCase.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-gray-900">{testCase.id}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-900">{testCase.title}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">{testCase.description}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">{testCase.expectedResult}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(
-                        testCase.priority
-                      )}`}
-                    >
-                      {testCase.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                        testCase.status
-                      )}`}
-                    >
-                      {testCase.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+
+        </table>
       </div>
     </div>
-  );
+
+  </div>
+);
 }

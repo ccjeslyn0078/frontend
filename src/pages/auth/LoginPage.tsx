@@ -1,56 +1,55 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+  });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
+    await login(form);
 
-    // fake auth (replace later with API)
-    if (email && password) {
-      localStorage.setItem("auth", "true");
-      navigate("/projects");
-    }
+    // ✅ redirect works now
+    navigate("/");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+    <div className="flex items-center justify-center h-screen bg-gray-100">
       <form
-        onSubmit={handleLogin}
-        className="w-full max-w-md bg-white rounded-xl p-6 shadow"
+        onSubmit={handleSubmit}
+        className="bg-white p-6 rounded-lg shadow-md w-80 space-y-4"
       >
-        <h2 className="text-2xl font-semibold mb-4">Login</h2>
+        <h2 className="text-xl font-semibold text-center">Login</h2>
 
         <input
-          type="email"
+          className="w-full border p-2 rounded"
           placeholder="Email"
-          className="w-full mb-3 p-2 border rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) =>
+            setForm({ ...form, email: e.target.value })
+          }
         />
 
         <input
           type="password"
+          className="w-full border p-2 rounded"
           placeholder="Password"
-          className="w-full mb-4 p-2 border rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) =>
+            setForm({ ...form, password: e.target.value })
+          }
         />
 
-        <button className="w-full bg-blue-600 text-white py-2 rounded">
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+        >
           Login
         </button>
-
-        <p className="text-sm mt-4">
-          Don’t have an account?{" "}
-          <Link to="/auth/register" className="text-blue-600">
-            Register
-          </Link>
-        </p>
       </form>
     </div>
   );
