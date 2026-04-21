@@ -5,17 +5,10 @@ import RegisterPage from "@/pages/auth/RegisterPage";
 export default function AuthRoutes() {
   return (
     <Routes>
-      {/* LOGIN */}
-      <Route path="/login" element={<LoginPage />} />
-
-      {/* REGISTER */}
-      <Route path="/register" element={<RegisterPage />} />
-
-      {/* DEFAULT */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
-
-      {/* FALLBACK */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route index element={<Navigate to="login" replace />} />
+      <Route path="login" element={<LoginPage />} />
+      <Route path="register" element={<RegisterPage />} />
+      <Route path="*" element={<Navigate to="login" replace />} />
     </Routes>
   );
 }

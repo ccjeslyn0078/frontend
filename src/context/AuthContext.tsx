@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from "react";
+import API from "../utils/api/fetchclient";
 
 type AuthContextType = {
   user: any;
@@ -16,32 +17,70 @@ export const AuthProvider = ({ children }: any) => {
     localStorage.getItem("token")
   );
 
+  const [user, setUser] = useState<any>(
+    localStorage.getItem("user")
+      ? JSON.parse(localStorage.getItem("user")!)
+      : null
+  );
+
   const isAuthenticated = !!token;
 
-  // ✅ MOCK LOGIN (no backend)
+  // ✅ LOGIN (FIXED)
   const login = async (data: any) => {
-    console.log("Login Data:", data);
+    const res = await API(
+      "/users/login/",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      false // ❗ no auth header
+    );
 
-    // fake token
-    const fakeToken = "demo-token";
+    // adjust based on your backend response
+    const accessToken = res.tokens?.access || res.access;
 
-    localStorage.setItem("token", fakeToken);
-    setToken(fakeToken);
+    // store token
+    localStorage.setItem("token", accessToken);
+    setToken(accessToken);
+
+    // store user (if exists)
+    if (res.user) {
+      localStorage.setItem("user", JSON.stringify(res.user));
+      setUser(res.user);
+    }
   };
 
-  // ✅ MOCK REGISTER
+  // ✅ REGISTER (FIXED)
   const register = async (data: any) => {
-    console.log("Register Data:", data);
+    await API(
+      "/users/register/",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      false // ❗ no auth header
+    );
   };
 
+  // ✅ LOGOUT
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
     setToken(null);
+    setUser(null);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user: null, token, login, register, logout, isAuthenticated }}
+      value={{
+        user,
+        token,
+        login,
+        register,
+        logout,
+        isAuthenticated,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -52,4 +91,4 @@ export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
-};  
+};

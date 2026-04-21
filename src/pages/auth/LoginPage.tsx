@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -11,12 +12,16 @@ export default function LoginPage() {
     password: "",
   });
 
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    await login(form);
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: () => {
+      navigate("/projects");
+    },
+  });
 
-    // ✅ redirect works now
-    navigate("/");
+  const handleSubmit = (e: any) => {
+    e.preventDefault();
+    loginMutation.mutate(form);
   };
 
   return (
@@ -30,6 +35,7 @@ export default function LoginPage() {
         <input
           className="w-full border p-2 rounded"
           placeholder="Email"
+          value={form.email}
           onChange={(e) =>
             setForm({ ...form, email: e.target.value })
           }
@@ -39,6 +45,7 @@ export default function LoginPage() {
           type="password"
           className="w-full border p-2 rounded"
           placeholder="Password"
+          value={form.password}
           onChange={(e) =>
             setForm({ ...form, password: e.target.value })
           }
@@ -46,10 +53,24 @@ export default function LoginPage() {
 
         <button
           type="submit"
+          disabled={loginMutation.isPending}
           className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
         >
-          Login
+          {loginMutation.isPending ? "Logging in..." : "Login"}
         </button>
+
+        {loginMutation.isError && (
+          <p className="text-red-500 text-sm text-center">
+            {(loginMutation.error as Error)?.message || "Login failed"}
+          </p>
+        )}
+
+        <p className="text-sm text-center">
+          Don't have an account?{" "}
+          <Link to="/auth/register" className="text-blue-600 hover:underline">
+            Register
+          </Link>
+        </p>
       </form>
     </div>
   );
