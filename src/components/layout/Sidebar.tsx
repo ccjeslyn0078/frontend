@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -20,7 +20,7 @@ export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: Sideb
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
-
+  const navigate=useNavigate();
   return (
     <aside
       className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out ${
@@ -87,7 +87,8 @@ export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: Sideb
         <button
           onClick={() => {
             localStorage.removeItem("token");
-            window.location.href = "/login";
+            localStorage.removeItem("user");
+            navigate("/auth/login");
           }}
           className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50 w-full"
         >

@@ -1,128 +1,128 @@
 import { useState } from "react";
 import {
   FolderKanban,
-  FileCheck,
-  Play,
-  Bug,
   Pencil,
   Trash2,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useNavigate } from "react-router-dom";
 
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  modules: number;
-  testCases: number;
-}
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import {
+  getProjects,
+  createProject,
+  updateProject,
+  deleteProject,
+} from "@/utils/api/project.api";
 
 export function ProjectsPage() {
   const navigate = useNavigate();
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({
-    name: "",
+    title: "",
     description: "",
   });
 
+  const [editingProject, setEditingProject] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
 
+  const [projectToDelete, setProjectToDelete] = useState<any>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  const [projects, setProjects] = useState<Project[]>([
-    {
-      id: "1",
-      name: "E-Commerce App",
-      description: "Testing platform for online shopping system",
-      modules: 5,
-      testCases: 120,
-    },
-    {
-      id: "2",
-      name: "Banking System",
-      description: "Core banking test suite",
-      modules: 8,
-      testCases: 200,
-    },
-    {
-      id: "3",
-      name: "Healthcare Portal",
-      description: "Patient management system testing",
-      modules: 4,
-      testCases: 90,
-    },
-  ]);
+  // 🔥 FETCH PROJECTS
+  const { data, isLoading, isError ,refetch} = useQuery({
+    queryKey: ["projects"],
+    queryFn: getProjects,
+  });
 
-  const options = [
-    {
-      id: "test-cases",
-      title: "Test Cases",
-      description: "Create, view, edit, and manage test cases",
-      icon: FileCheck,
-      color: "blue",
-    },
-    {
-      id: "test-run",
-      title: "Test Run",
-      description: "Execute test cases and update pass/fail status",
-      icon: Play,
-      color: "green",
-    },
-    {
-      id: "bugs",
-      title: "Bugs",
-      description: "View and manage bug tickets",
-      icon: Bug,
-      color: "red",
-    },
-  ];
+  const projects = Array.isArray(data)
+    ? data
+    : data?.results || [];
 
-  const handleProjectClick = (project: Project) => {
-  navigate(`/projects/${project.id}/modules`);
+  // ➕ CREATE
+  const createMutation = useMutation({
+    mutationFn: createProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+
+  // ✏️ UPDATE (instant UI update)
+  const updateMutation = useMutation({
+    mutationFn: updateProject,
+
+    onSuccess: () => {
+     refetch();
+    },
+  });
+
+  // ❌ DELETE (instant UI removal)
+  const deleteMutation = useMutation({
+  mutationFn: deleteProject,
+
+  onSuccess: (_, variables) => {
+    const deletedId = variables; // 👈 THIS is the real id
+
+    queryClient.setQueryData(["projects"], (old: any) => {
+      if (!old) return old;
+
+      const filtered = (Array.isArray(old) ? old : old.results).filter(
+        (proj: any) => proj.id !== deletedId
+      );
+
+      return Array.isArray(old)
+        ? filtered
+        : { ...old, results: filtered };
+    });
+  },
+});
+
+  // ✅ NAVIGATION FIX
+  const handleProjectClick = (project: any) => {
+    navigate(`/projects/${project.id}/modules`);
   };
 
-  const handleOptionClick = (optionId: string) => {
-    if (selectedProject) {
-      setIsModalOpen(false);
-      navigate(`/projects/${selectedProject.id}/${optionId}`);
-    }
-  };
+  if (isLoading) {
+    return <div className="p-6">Loading projects...</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6 text-red-500">
+        Failed to load projects
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            All Projects
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Select a project to manage test cases, runs, and bugs
-          </p>
-        </div>
+      <div className="flex justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Projects</h1>
 
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="bg-blue-600 text-white px-4 py-2 rounded"
         >
           + New Project
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <button
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {projects.map((project: any) => (
+          <div
             key={project.id}
             onClick={() => handleProjectClick(project)}
-            className="bg-white rounded-lg border p-6 hover:shadow-md text-left"
+            className="border p-5 rounded cursor-pointer hover:shadow"
           >
-            <div className="flex justify-between mb-4">
-              <FolderKanban className="w-6 h-6 text-blue-600" />
+            <div className="flex justify-between mb-2">
+              <FolderKanban className="text-blue-600" />
 
               <div className="flex gap-2">
                 <button
@@ -131,9 +131,8 @@ export function ProjectsPage() {
                     setEditingProject(project);
                     setIsEditModalOpen(true);
                   }}
-                  className="text-blue-500"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-4 h-4 text-blue-500" />
                 </button>
 
                 <button
@@ -142,61 +141,19 @@ export function ProjectsPage() {
                     setProjectToDelete(project);
                     setIsDeleteModalOpen(true);
                   }}
-                  className="text-red-500"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4 text-red-500" />
                 </button>
               </div>
             </div>
 
-            <h3 className="font-semibold">{project.name}</h3>
-            <p className="text-sm text-gray-600">{project.description}</p>
-
-            <div className="flex gap-4 mt-4 text-sm text-gray-600">
-              <span>{project.modules} modules</span>
-              <span>{project.testCases} test cases</span>
-            </div>
-          </button>
+            <h3 className="font-semibold">{project.title}</h3>
+            <p className="text-sm text-gray-600">
+              {project.description}
+            </p>
+          </div>
         ))}
       </div>
-
-      {/* OPTIONS MODAL */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={selectedProject?.name || ""}
-        size="lg"
-      >
-        <div className="grid grid-cols-3 gap-6">
-          {options.map((option) => (
-            <button
-              key={option.id}
-              onClick={() => handleOptionClick(option.id)}
-              className="border p-5 rounded-xl text-left hover:shadow-md transition"
-            >
-              <div
-                className={`w-10 h-10 flex items-center justify-center rounded-lg mb-3 ${
-                  option.color === "blue"
-                    ? "bg-blue-100 text-blue-600"
-                    : option.color === "green"
-                    ? "bg-green-100 text-green-600"
-                    : "bg-red-100 text-red-600"
-                }`}
-              >
-                <option.icon className="w-5 h-5" />
-              </div>
-
-              <h3 className="font-semibold text-gray-900">
-                {option.title}
-              </h3>
-
-              <p className="text-sm text-gray-600 mt-1">
-                {option.description}
-              </p>
-            </button>
-          ))}
-        </div>
-      </Modal>
 
       {/* CREATE */}
       <Modal
@@ -206,37 +163,42 @@ export function ProjectsPage() {
       >
         <input
           placeholder="Title"
-          className="w-full border p-2 mb-3"
-          value={newProject.name}
+          className="border p-2 w-full mb-2"
+          value={newProject.title}
           onChange={(e) =>
-            setNewProject({ ...newProject, name: e.target.value })
-          }
-        />
-        <textarea
-          placeholder="Description"
-          className="w-full border p-2 mb-3"
-          value={newProject.description}
-          onChange={(e) =>
-            setNewProject({ ...newProject, description: e.target.value })
+            setNewProject({
+              ...newProject,
+              title: e.target.value,
+            })
           }
         />
 
-        <div className="flex justify-end gap-2">
-          <button onClick={() => setIsCreateModalOpen(false)}>Cancel</button>
+        <textarea
+          placeholder="Description"
+          className="border p-2 w-full"
+          value={newProject.description}
+          onChange={(e) =>
+            setNewProject({
+              ...newProject,
+              description: e.target.value,
+            })
+          }
+        />
+
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => setIsCreateModalOpen(false)}
+            className="bg-gray-300 px-4 py-2 rounded"
+          >
+            Cancel
+          </button>
+
           <button
             onClick={() => {
-              setProjects((prev) => [
-                ...prev,
-                {
-                  id: Date.now().toString(),
-                  ...newProject,
-                  modules: 0,
-                  testCases: 0,
-                },
-              ]);
+              createMutation.mutate(newProject);
               setIsCreateModalOpen(false);
             }}
-            className="bg-blue-600 text-white px-4 py-1 rounded"
+            className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             Create
           </button>
@@ -252,18 +214,18 @@ export function ProjectsPage() {
         {editingProject && (
           <>
             <input
-              className="w-full border p-2 mb-3"
-              value={editingProject.name}
+              className="border p-2 w-full mb-2"
+              value={editingProject.title}
               onChange={(e) =>
                 setEditingProject({
                   ...editingProject,
-                  name: e.target.value,
+                  title: e.target.value,
                 })
               }
             />
 
             <textarea
-              className="w-full border p-2 mb-3"
+              className="border p-2 w-full"
               value={editingProject.description}
               onChange={(e) =>
                 setEditingProject({
@@ -273,21 +235,27 @@ export function ProjectsPage() {
               }
             />
 
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setIsEditModalOpen(false)}>
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="bg-gray-300 px-4 py-2 rounded"
+              >
                 Cancel
               </button>
 
               <button
                 onClick={() => {
-                  setProjects((prev) =>
-                    prev.map((p) =>
-                      p.id === editingProject.id ? editingProject : p
-                    )
-                  );
+                  updateMutation.mutate({
+                    id: editingProject.id,
+                    data: {
+                      title: editingProject.title,
+                      description:
+                        editingProject.description,
+                    },
+                  });
                   setIsEditModalOpen(false);
                 }}
-                className="bg-blue-600 text-white px-4 py-1 rounded"
+                className="bg-blue-600 text-white px-4 py-2 rounded"
               >
                 Update
               </button>
@@ -300,23 +268,28 @@ export function ProjectsPage() {
       <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        title="Confirm Delete"
+        title="Delete Project"
       >
-        <p>Are you sure you want to delete?</p>
+        <p>
+          Are you sure you want to delete this project?
+        </p>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <button onClick={() => setIsDeleteModalOpen(false)}>No</button>
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => setIsDeleteModalOpen(false)}
+            className="bg-gray-300 px-4 py-2 rounded"
+          >
+            Cancel
+          </button>
 
           <button
             onClick={() => {
-              setProjects((prev) =>
-                prev.filter((p) => p.id !== projectToDelete?.id)
-              );
+              deleteMutation.mutate(projectToDelete.id);
               setIsDeleteModalOpen(false);
             }}
-            className="bg-red-600 text-white px-4 py-1 rounded"
+            className="bg-red-600 text-white px-4 py-2 rounded"
           >
-            Yes
+            Delete
           </button>
         </div>
       </Modal>

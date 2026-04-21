@@ -5,15 +5,14 @@ import { useAuth } from "./context/AuthContext";
 
 export default function Root() {
   const { isAuthenticated } = useAuth();
-  
+
+
   return (
     <Routes>
 
 
-      {/* AUTH ROUTES */}
       <Route path="/auth/*" element={<AuthRoutes />} />
 
-      {/* PROTECTED ADMIN */}
       <Route
         path="/*"
         element={
@@ -25,7 +24,6 @@ export default function Root() {
         }
       />
 
-      {/* FALLBACK */}
       <Route path="*" element={<Navigate to="/auth/login" replace />} />
 
     </Routes>
