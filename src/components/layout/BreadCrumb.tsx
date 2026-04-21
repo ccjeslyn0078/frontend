@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
+import { useNavigate } from "react-router-dom"; // ✅ ADD THIS
 import { ChevronRight, MoreHorizontal } from "lucide-react";
 
 import { cn } from "../ui/utils";
@@ -14,7 +14,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
       data-slot="breadcrumb-list"
       className={cn(
         "text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm break-words sm:gap-2.5",
-        className,
+        className
       )}
       {...props}
     />
@@ -31,18 +31,36 @@ function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
   );
 }
 
+/* ✅ 🔥 FIXED COMPONENT */
 function BreadcrumbLink({
-  asChild,
   className,
+  href,
   ...props
-}: React.ComponentProps<"a"> & {
-  asChild?: boolean;
-}) {
-  const Comp = asChild ? Slot : "a";
+}: React.ComponentProps<"a">) {
+  const navigate = useNavigate();
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // ✅ allow open in new tab / middle click
+    if (
+      e.ctrlKey ||
+      e.metaKey ||
+      e.shiftKey ||
+      e.button === 1
+    ) {
+      return;
+    }
+
+    if (href) {
+      e.preventDefault(); // ❌ stop reload
+      navigate(href);     // ✅ SPA navigation
+    }
+  };
 
   return (
-    <Comp
+    <a
       data-slot="breadcrumb-link"
+      href={href}
+      onClick={handleClick}
       className={cn("hover:text-foreground transition-colors", className)}
       {...props}
     />
