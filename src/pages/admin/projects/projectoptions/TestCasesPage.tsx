@@ -1,193 +1,236 @@
-import { Link, useParams } from "react-router-dom";
-import { Edit, Trash2, Plus } from "lucide-react";
+
+import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { Pencil, Trash2, Plus } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
+
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import {
+  getTestCases,
+  createTestCase,
+  updateTestCase,
+  deleteTestCase,
+} from "../../../../utils/api/testcase.api";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/layout/BreadCrumb";
 
-export function TestCaseList() {
-  const { projectId, option, moduleId } = useParams();
+import { Link } from "react-router-dom";
 
-  const projectName = projectId?.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "Project";
-  const moduleName = moduleId?.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) || "Module";
+export default function TestCasesPage() {
+  const { projectId, moduleId, screenId } = useParams();
+  const queryClient = useQueryClient();
 
-  const testCases = [
-    {
-      id: "TC-001",
-      title: "Verify login with valid credentials",
-      description: "User should be able to login with correct email and password",
-      expectedResult: "User is redirected to dashboard",
-      priority: "High",
-      status: "Pass",
-    },
-    {
-      id: "TC-002",
-      title: "Verify login with invalid credentials",
-      description: "User should see error message with incorrect credentials",
-      expectedResult: "Error message is displayed",
-      priority: "High",
-      status: "Pass",
-    },
-    {
-      id: "TC-003",
-      title: "Verify password reset functionality",
-      description: "User should receive reset email when requesting password reset",
-      expectedResult: "Reset email sent successfully",
-      priority: "Medium",
-      status: "Fail",
-    },
-    {
-      id: "TC-004",
-      title: "Verify session timeout",
-      description: "User session should expire after 30 minutes of inactivity",
-      expectedResult: "User is logged out automatically",
-      priority: "Medium",
-      status: "Pending",
-    },
-    {
-      id: "TC-005",
-      title: "Verify multi-factor authentication",
-      description: "User should be prompted for 2FA code after login",
-      expectedResult: "2FA prompt is displayed",
-      priority: "High",
-      status: "Pass",
-    },
-  ];
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "High":
-        return "bg-red-100 text-red-700";
-      case "Medium":
-        return "bg-yellow-100 text-yellow-700";
-      case "Low":
-        return "bg-gray-100 text-gray-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newTestCase, setNewTestCase] = useState({
+    title: "",
+    description: "",
+    expected_results: "",
+    priority: "medium",
+    status: "open",
+    type_of_testcase: "functional",
+  });
+
+  const [editingTestCase, setEditingTestCase] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const [testcaseToDelete, setTestcaseToDelete] = useState<any>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // FETCH
+  const { data, isLoading } = useQuery({
+    queryKey: ["testcases", screenId],
+    queryFn: () => getTestCases(screenId as string),
+    enabled: !!screenId,
+  });
+
+  const testcases = Array.isArray(data)
+    ? data
+    : (data as any)?.results || [];
+
+  // CREATE
+  const createMutation = useMutation({
+    mutationFn: createTestCase,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["testcases", screenId] }),
+  });
+
+  // UPDATE
+  const updateMutation = useMutation({
+    mutationFn: updateTestCase,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["testcases", screenId] }),
+  });
+
+  // DELETE
+  const deleteMutation = useMutation({
+    mutationFn: deleteTestCase,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["testcases", screenId] }),
+  });
+
+  const filtered = testcases.filter((tc: any) =>
+    tc.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getPriorityColor = (p: string) => {
+    if (p === "high") return "bg-red-100 text-red-700";
+    if (p === "medium") return "bg-yellow-100 text-yellow-700";
+    return "bg-green-100 text-green-700";
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Pass":
-        return "bg-green-100 text-green-700";
-      case "Fail":
-        return "bg-red-100 text-red-700";
-      case "Pending":
-        return "bg-yellow-100 text-yellow-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
+  const getStatusColor = (s: string) => {
+    if (s === "completed") return "bg-green-100 text-green-700";
+    if (s === "in_progress") return "bg-yellow-100 text-yellow-700";
+    return "bg-gray-100 text-gray-700";
   };
 
-return (
-  <div className="p-8">
+  if (isLoading) return <div className="p-6">Loading...</div>;
 
-    {/* Breadcrumb */}
-    <Breadcrumb className="mb-4">
-      <BreadcrumbList>
+  return (
+    <div className="p-6">
 
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
+      {/* 🔹 BREADCRUMB */}
+      <Breadcrumb className="mb-4">
+        <BreadcrumbList className="flex gap-2 text-sm text-gray-500">
+
+          <BreadcrumbItem>
             <Link to="/projects">Projects</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
+          </BreadcrumbItem>
 
-        <BreadcrumbSeparator />
+          <BreadcrumbSeparator />
 
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
+          <BreadcrumbItem>
             <Link to={`/projects/${projectId}/modules`}>
-              {projectName}
+              Modules
             </Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
+          </BreadcrumbItem>
 
-        <BreadcrumbSeparator />
+          <BreadcrumbSeparator />
 
-        <BreadcrumbItem>
-          <BreadcrumbPage>Test Cases</BreadcrumbPage>
-        </BreadcrumbItem>
+          <BreadcrumbItem>
+            <Link to={`/projects/${projectId}/modules/${moduleId}/screens`}>
+              Screens
+            </Link>
+          </BreadcrumbItem>
 
-        <BreadcrumbSeparator />
+          <BreadcrumbSeparator />
 
-        <BreadcrumbItem>
-          <BreadcrumbPage>{moduleName}</BreadcrumbPage>
-        </BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Test Cases</BreadcrumbPage>
+          </BreadcrumbItem>
 
-      </BreadcrumbList>
-    </Breadcrumb>
+        </BreadcrumbList>
+      </Breadcrumb>
 
-    {/* Header */}
-    <div className="mt-8 flex items-center justify-between">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
-          Test Cases - {moduleName}
-        </h1>
-        <p className="text-gray-600 mt-1">
-          {testCases.length} test cases found
-        </p>
+      {/* HEADER */}
+      <div className="flex justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-800">
+            Test Cases
+          </h2>
+          <p className="text-gray-600 mt-1">
+            Manage and organize your test cases
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-600"
+        >
+          <Plus className="w-4 h-4" />
+          Create Test Case
+        </button>
       </div>
 
-      <Link
-        to={`/projects/${projectId}/${option}/${moduleId}/test-cases/create`}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Create Test Case
-      </Link>
-    </div>
+      {/* SEARCH */}
+      <input
+        placeholder="Search test cases..."
+        className="border rounded-lg px-3 py-2 mb-4 w-full max-w-sm"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
 
-    {/* Table */}
-    <div className="bg-white rounded-lg border border-gray-200 mt-6 overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* TABLE */}
+      <div className="bg-white rounded-lg shadow-md overflow-x-auto">
         <table className="w-full">
 
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Test Case ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Expected Result</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-sm">ID</th>
+              <th className="px-6 py-3 text-left text-sm">Title</th>
+              <th className="px-6 py-3 text-left text-sm">Description</th>
+              <th className="px-6 py-3 text-left text-sm">Expected</th>
+              <th className="px-6 py-3 text-left text-sm">Priority</th>
+              <th className="px-6 py-3 text-left text-sm">Status</th>
+              <th className="px-6 py-3 text-right text-sm">Actions</th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-200">
-            {testCases.map((testCase) => (
-              <tr key={testCase.id} className="hover:bg-gray-50">
+          <tbody className="divide-y">
+            {filtered.map((tc: any) => (
+              <tr key={tc.uuid} className="hover:bg-gray-50">
 
-                <td className="px-6 py-4">{testCase.id}</td>
-                <td className="px-6 py-4">{testCase.title}</td>
-                <td className="px-6 py-4">{testCase.description}</td>
-                <td className="px-6 py-4">{testCase.expectedResult}</td>
+                <td className="px-6 py-4 font-medium">
+                  {tc.uuid.slice(0, 6)}
+                </td>
+
+                <td className="px-6 py-4">{tc.title}</td>
+
+                <td className="px-6 py-4 text-gray-600">
+                  {tc.description}
+                </td>
+
+                <td className="px-6 py-4 text-gray-600">
+                  {tc.expected_results}
+                </td>
 
                 <td className="px-6 py-4">
-                  <span className={getPriorityColor(testCase.priority)}>
-                    {testCase.priority}
+                  <span className={`px-2 py-1 text-xs rounded ${getPriorityColor(tc.priority)}`}>
+                    {tc.priority}
                   </span>
                 </td>
 
                 <td className="px-6 py-4">
-                  <span className={getStatusColor(testCase.status)}>
-                    {testCase.status}
+                  <span className={`px-2 py-1 text-xs rounded ${getStatusColor(tc.status)}`}>
+                    {tc.status}
                   </span>
                 </td>
 
-                <td className="px-6 py-4">
-                  <div className="flex gap-2">
-                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded">
-                      <Edit className="w-4 h-4" />
+                <td className="px-6 py-4 text-right">
+                  <div className="flex justify-end gap-2">
+
+                    <button
+                      onClick={() => {
+                        setEditingTestCase(tc);
+                        setIsEditModalOpen(true);
+                      }}
+                      className="p-2 hover:bg-blue-50 rounded"
+                    >
+                      <Pencil className="w-4 h-4 text-blue-600" />
                     </button>
-                    <button className="p-2 text-red-600 hover:bg-red-50 rounded">
-                      <Trash2 className="w-4 h-4" />
+
+                    <button
+                      onClick={() => {
+                        setTestcaseToDelete(tc);
+                        setIsDeleteModalOpen(true);
+                      }}
+                      className="p-2 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
                     </button>
+
                   </div>
                 </td>
 
@@ -197,8 +240,178 @@ return (
 
         </table>
       </div>
-    </div>
 
-  </div>
-);
+      <Modal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create TestCase"
+      >
+        <input
+          placeholder="Title"
+          className="border p-2 w-full mb-2"
+          onChange={(e) =>
+            setNewTestCase({ ...newTestCase, title: e.target.value })
+          }
+        />
+
+        <textarea
+          placeholder="Description"
+          className="border p-2 w-full mb-2"
+          onChange={(e) =>
+            setNewTestCase({ ...newTestCase, description: e.target.value })
+          }
+        />
+
+        <textarea
+          placeholder="Expected Results"
+          className="border p-2 w-full mb-2"
+          onChange={(e) =>
+            setNewTestCase({
+              ...newTestCase,
+              expected_results: e.target.value,
+            })
+          }
+        />
+
+        {/* 🔥 NEW PRIORITY DROPDOWN */}
+        <select
+          className="border p-2 w-full mb-2"
+          value={newTestCase.priority}
+          onChange={(e) =>
+            setNewTestCase({
+              ...newTestCase,
+              priority: e.target.value,
+            })
+          }
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => setIsCreateModalOpen(false)}
+            className="bg-gray-300 px-4 py-2 rounded"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={() => {
+              createMutation.mutate({
+                ...newTestCase,
+                screen: screenId,
+              });
+              setIsCreateModalOpen(false);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Create
+          </button>
+        </div>
+      </Modal>
+
+      {/* EDIT */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit TestCase"
+      >
+        {editingTestCase && (
+          <>
+            <input
+              className="border p-2 w-full mb-2"
+              value={editingTestCase.title}
+              onChange={(e) =>
+                setEditingTestCase({
+                  ...editingTestCase,
+                  title: e.target.value,
+                })
+              }
+            />
+
+            <textarea
+              className="border p-2 w-full mb-2"
+              value={editingTestCase.description}
+              onChange={(e) =>
+                setEditingTestCase({
+                  ...editingTestCase,
+                  description: e.target.value,
+                })
+              }
+            />
+
+            <textarea
+              className="border p-2 w-full"
+              value={editingTestCase.expected_results}
+              onChange={(e) =>
+                setEditingTestCase({
+                  ...editingTestCase,
+                  expected_results: e.target.value,
+                })
+              }
+            />
+
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="bg-gray-300 px-4 py-2 rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => {
+                  updateMutation.mutate({
+                    id: editingTestCase.uuid,
+                    data: {
+                      title: editingTestCase.title,
+                      description: editingTestCase.description,
+                      expected_results: editingTestCase.expected_results,
+                    },
+                  });
+
+                  setIsEditModalOpen(false);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Update
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* DELETE */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete TestCase"
+      >
+        <p>Are you sure?</p>
+
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => setIsDeleteModalOpen(false)}
+            className="bg-gray-300 px-4 py-2 rounded"
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={() => {
+              deleteMutation.mutate(testcaseToDelete.uuid);
+              setIsDeleteModalOpen(false);
+            }}
+            className="bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Delete
+          </button>
+        </div>
+      </Modal>
+
+
+    </div>
+  );
 }

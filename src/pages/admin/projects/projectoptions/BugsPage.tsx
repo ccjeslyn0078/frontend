@@ -1,22 +1,355 @@
-const bugs = [
-  {
-    id: "BUG-1",
-    title: "Login button not working",
-    severity: "High",
-  },
-];
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Edit, Trash2, Search } from "lucide-react";
+
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/layout/BreadCrumb";
+
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import {
+  getBugs,
+  createBug,
+  updateBug,
+  deleteBug,
+} from "@/utils/api/bug.api";
+
+import { Modal } from "@/components/ui/Modal";
 
 export default function BugsPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-xl font-semibold mb-4">Bugs</h1>
+  const { projectId, moduleId, screenId } = useParams();
+  const queryClient = useQueryClient();
 
-      {bugs.map((bug) => (
-        <div key={bug.id} className="border p-4 rounded mb-2">
-          <h2 className="font-medium">{bug.title}</h2>
-          <p className="text-sm text-red-500">{bug.severity}</p>
+  const [searchQuery, setSearchQuery] = useState("");
+
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newBug, setNewBug] = useState({
+    description: "",
+    steps_to_reproduce: "",
+    severity: "medium",
+    expected_results: "",
+    actual_results: "",
+  });
+
+
+  const [editingBug, setEditingBug] = useState<any>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["bugs", screenId],
+    queryFn: () => getBugs(screenId as string),
+    enabled: !!screenId,
+  });
+
+  const bugs = Array.isArray(data) ? data : data?.results || [];
+
+  // CREATE
+  const createMutation = useMutation({
+    mutationFn: createBug,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
+    },
+  });
+
+  //  UPDATE
+  const updateMutation = useMutation({
+    mutationFn: updateBug,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
+    },
+  });
+
+  //  DELETE
+  const deleteMutation = useMutation({
+    mutationFn: deleteBug,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
+    },
+  });
+
+  const filtered = bugs.filter((b: any) =>
+    b.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (isLoading) return <div className="p-6">Loading...</div>;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-6">
+
+        {/* 🔹 BREADCRUMB */}
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList className="flex gap-2 text-sm text-gray-500">
+
+            <BreadcrumbItem>
+              <Link to="/projects">Projects</Link>
+            </BreadcrumbItem>
+
+            <BreadcrumbSeparator />
+
+            <BreadcrumbItem>
+              <Link to={`/projects/${projectId}/modules`}>
+                Modules
+              </Link>
+            </BreadcrumbItem>
+
+            <BreadcrumbSeparator />
+
+            <BreadcrumbItem>
+              <Link to={`/projects/${projectId}/modules/${moduleId}/screens`}>
+                Screens
+              </Link>
+            </BreadcrumbItem>
+
+            <BreadcrumbSeparator />
+
+            <BreadcrumbItem>
+              <BreadcrumbPage>Bugs</BreadcrumbPage>
+            </BreadcrumbItem>
+
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        {/* 🔹 HEADER */}
+        <div className="flex justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Bug Tracker</h1>
+
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-red-600 text-white px-4 py-2 rounded"
+          >
+            + Report Bug
+          </button>
         </div>
-      ))}
+
+        {/* 🔹 SEARCH */}
+        <div className="mb-4 max-w-sm relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+
+          <input
+            placeholder="Search bugs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border rounded-lg"
+          />
+        </div>
+
+        {/* 🔹 TABLE */}
+        <div className="overflow-x-auto">
+          <table className="w-full bg-white border rounded-xl overflow-hidden">
+
+            {/* HEADER */}
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs">Bug ID</th>
+                <th className="px-4 py-2 text-left text-xs">TC ID</th>
+                <th className="px-4 py-2 text-left text-xs">Title</th>
+                <th className="px-4 py-2 text-left text-xs">Steps</th>
+                <th className="px-4 py-2 text-left text-xs">Actual</th>
+                <th className="px-4 py-2 text-left text-xs">Severity</th>
+                <th className="px-4 py-2 text-left text-xs">Status</th>
+                <th className="px-4 py-2 text-left text-xs">Assigned</th>
+                <th className="px-4 py-2 text-left text-xs">Created</th>
+                <th className="px-4 py-2 text-left text-xs">Actions</th>
+              </tr>
+            </thead>
+
+            {/* BODY */}
+            <tbody>
+              {filtered.map((bug: any) => (
+                <tr key={bug.uuid} className="border-b hover:bg-gray-50">
+
+                  {/* Bug ID */}
+                  <td className="px-4 py-3">
+                    {bug.uuid.slice(0, 6)}
+                  </td>
+
+                  {/* TC ID */}
+                  <td className="px-4 py-3">
+                    {bug.test_case ? bug.test_case.slice(0, 6) : "-"}
+                  </td>
+
+                  {/* Title */}
+                  <td className="px-4 py-3 font-medium">
+                    {bug.description}
+                  </td>
+
+                  {/* Steps */}
+                  <td className="px-4 py-3 max-w-xs">
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {bug.steps_to_reproduce || "N/A"}
+                    </p>
+                  </td>
+
+                  {/* Actual Results */}
+                  <td className="px-4 py-3 max-w-xs">
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {bug.actual_results || "N/A"}
+                    </p>
+                  </td>
+
+                  {/* Severity */}
+                  <td className="px-4 py-3">
+                    {bug.severity}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-4 py-3">
+                    {bug.status}
+                  </td>
+
+                  {/* Assigned */}
+                  <td className="px-4 py-3">
+                    {bug.created_by || "N/A"}
+                  </td>
+
+                  {/* Created */}
+                  <td className="px-4 py-3">
+                    {bug.created_at
+                      ? new Date(bug.created_at).toLocaleDateString()
+                      : "-"}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-4 py-3 flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingBug(bug);
+                        setIsEditOpen(true);
+                      }}
+                    >
+                      <Edit className="w-4 h-4 text-blue-600" />
+                    </button>
+
+                    <button
+                      onClick={() => deleteMutation.mutate(bug.uuid)}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </button>
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+
+          </table>
+        </div>
+
+        {/* 🔹 CREATE MODAL */}
+        <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create Bug">
+
+          <textarea
+            placeholder="Description"
+            className="border p-2 w-full mb-2"
+            onChange={(e) =>
+              setNewBug({ ...newBug, description: e.target.value })
+            }
+          />
+
+          <textarea
+            placeholder="Steps to Reproduce"
+            className="border p-2 w-full mb-2"
+            onChange={(e) =>
+              setNewBug({
+                ...newBug,
+                steps_to_reproduce: e.target.value,
+              })
+            }
+          />
+
+          <input
+            placeholder="Expected Results"
+            className="border p-2 w-full mb-2"
+            onChange={(e) =>
+              setNewBug({
+                ...newBug,
+                expected_results: e.target.value,
+              })
+            }
+          />
+
+          <input
+            placeholder="Actual Results"
+            className="border p-2 w-full"
+            onChange={(e) =>
+              setNewBug({
+                ...newBug,
+                actual_results: e.target.value,
+              })
+            }
+          />
+
+          <button
+            onClick={() => {
+              createMutation.mutate({
+                ...newBug,
+                project: projectId,
+                module: moduleId,
+                screen: screenId,
+              });
+              setIsCreateOpen(false);
+            }}
+            className="bg-red-600 text-white px-4 py-2 mt-3 rounded"
+          >
+            Create
+          </button>
+        </Modal>
+
+        {/* 🔹 EDIT MODAL */}
+        <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Bug">
+
+          {editingBug && (
+            <>
+              <textarea
+                value={editingBug.description}
+                className="border p-2 w-full mb-2"
+                onChange={(e) =>
+                  setEditingBug({
+                    ...editingBug,
+                    description: e.target.value,
+                  })
+                }
+              />
+
+              <textarea
+                value={editingBug.steps_to_reproduce}
+                className="border p-2 w-full mb-2"
+                onChange={(e) =>
+                  setEditingBug({
+                    ...editingBug,
+                    steps_to_reproduce: e.target.value,
+                  })
+                }
+              />
+
+              <button
+                onClick={() => {
+                  updateMutation.mutate({
+                    id: editingBug.uuid,
+                    data: editingBug,
+                  });
+                  setIsEditOpen(false);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Update
+              </button>
+            </>
+          )}
+        </Modal>
+
+      </div>
     </div>
   );
 }
