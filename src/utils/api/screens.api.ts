@@ -1,13 +1,15 @@
 import API from "@/utils/api/fetchclient";
 
+// GET screens by module
 export const getScreens = async (moduleId: string) => {
-  return API(`/projects/screens/?module=${moduleId}`, {
+  return API(`/screens/?module=${moduleId}`, {
     method: "GET",
   });
 };
 
+// CREATE screen
 export const createScreen = async (data: any) => {
-  return API("/projects/screens/", {
+  return API("/screens/", {
     method: "POST",
     body: JSON.stringify({
       name: data.name,
@@ -17,8 +19,9 @@ export const createScreen = async (data: any) => {
   });
 };
 
+// UPDATE screen
 export const updateScreen = async ({ id, data }: any) => {
-  return API(`/projects/screens/${id}/`, {
+  return API(`/screens/${id}/`, {
     method: "PUT",
     body: JSON.stringify({
       name: data.name,
@@ -28,8 +31,9 @@ export const updateScreen = async ({ id, data }: any) => {
   });
 };
 
+// DELETE screen
 export const deleteScreen = async (id: string) => {
-  return API(`/projects/screens/${id}/`, {
+  return API(`/screens/${id}/`, {
     method: "DELETE",
   });
 };

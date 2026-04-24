@@ -26,29 +26,27 @@ export const AuthProvider = ({ children }: any) => {
   const isAuthenticated = !!token;
 
   // ✅ LOGIN (FIXED)
-  const login = async (data: any) => {
-    const res = await API(
-      "/users/login/",
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      },
-      false // ❗ no auth header
-    );
+const login = async (data: any) => {
+  const res = await API(
+    "/users/login/",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+    false
+  );
 
-    // adjust based on your backend response
-    const accessToken = res.tokens?.access || res.access;
+  const accessToken = res.tokens?.access || res.access;
 
-    // store token
-    localStorage.setItem("token", accessToken);
-    setToken(accessToken);
+  // 🔥 FIXED KEY
+  localStorage.setItem("access", accessToken);
+  setToken(accessToken);
 
-    // store user (if exists)
-    if (res.user) {
-      localStorage.setItem("user", JSON.stringify(res.user));
-      setUser(res.user);
-    }
-  };
+  if (res.user) {
+    localStorage.setItem("user", JSON.stringify(res.user));
+    setUser(res.user);
+  }
+};
 
   // ✅ REGISTER (FIXED)
   const register = async (data: any) => {

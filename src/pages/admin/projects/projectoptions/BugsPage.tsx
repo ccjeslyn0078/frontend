@@ -1,217 +1,240 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  Bug,
-  Search,
-  ChevronDown,
-  AlertTriangle,
-} from "lucide-react";
+import { Edit, Trash2, Search } from "lucide-react";
 
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/layout/BreadCrumb";
 
-interface BugItem {
-  id: string;
-  title: string;
-  description: string;
-  severity: "Critical" | "High" | "Medium" | "Low";
-  status: "Open" | "In Progress" | "Resolved" | "Closed";
-  assignedTo: string;
-  relatedTC: string;
-  createdDate: string;
-}
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 
-const initialBugs: BugItem[] = [
-  {
-    id: "BUG-001",
-    title: "Login button not responding on mobile",
-    description: "Issue in mobile login",
-    severity: "Critical",
-    status: "Open",
-    assignedTo: "John",
-    relatedTC: "TC-001",
-    createdDate: "2026-04-15",
-  },
-];
+import {
+  getBugs,
+  createBug,
+  updateBug,
+  deleteBug,
+} from "@/utils/api/bug.api";
 
-const severityStyles = {
-  Critical: "bg-purple-100 text-purple-700",
-  High: "bg-red-100 text-red-700",
-  Medium: "bg-yellow-100 text-yellow-700",
-  Low: "bg-blue-100 text-blue-700",
-};
-
-const statusStyles = {
-  Open: "bg-red-100 text-red-700",
-  "In Progress": "bg-blue-100 text-blue-700",
-  Resolved: "bg-green-100 text-green-700",
-  Closed: "bg-gray-100 text-gray-600",
-};
+import { Modal } from "@/components/ui/Modal";
 
 export default function BugsPage() {
-  const { projectId, moduleId } = useParams();
-  const [bugs] = useState(initialBugs);
+  const { projectId, moduleId, screenId } = useParams();
+  const queryClient = useQueryClient();
+
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filtered = bugs.filter((b) =>
-    b.title.toLowerCase().includes(searchQuery.toLowerCase())
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newBug, setNewBug] = useState({
+    description: "",
+    steps_to_reproduce: "",
+    severity: "medium",
+    expected_results: "",
+    actual_results: "",
+  });
+
+
+  const [editingBug, setEditingBug] = useState<any>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["bugs", screenId],
+    queryFn: () => getBugs(screenId as string),
+    enabled: !!screenId,
+  });
+
+  const bugs = Array.isArray(data) ? data : data?.results || [];
+
+  // CREATE
+  const createMutation = useMutation({
+    mutationFn: createBug,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
+    },
+  });
+
+  //  UPDATE
+  const updateMutation = useMutation({
+    mutationFn: updateBug,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
+    },
+  });
+
+  //  DELETE
+  const deleteMutation = useMutation({
+    mutationFn: deleteBug,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
+    },
+  });
+
+  const filtered = bugs.filter((b: any) =>
+    b.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (isLoading) return <div className="p-6">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* 🔥 MAIN CONTAINER FIX */}
       <div className="max-w-7xl mx-auto px-6 py-6">
 
-        {/* Breadcrumb */}
+        {/* 🔹 BREADCRUMB */}
         <Breadcrumb className="mb-6">
-          <BreadcrumbList className="text-sm text-gray-500 flex items-center gap-2">
+          <BreadcrumbList className="flex gap-2 text-sm text-gray-500">
+
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/projects">Projects</Link>
-              </BreadcrumbLink>
+              <Link to="/projects">Projects</Link>
             </BreadcrumbItem>
 
             <BreadcrumbSeparator />
 
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to={`/projects/${projectId}/modules`}>
-                  Project
-                </Link>
-              </BreadcrumbLink>
+              <Link to={`/projects/${projectId}/modules`}>
+                Modules
+              </Link>
             </BreadcrumbItem>
 
             <BreadcrumbSeparator />
 
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to={`/projects/${projectId}/modules/${moduleId}/screens`}>
-                  Module
-                </Link>
-              </BreadcrumbLink>
+              <Link to={`/projects/${projectId}/modules/${moduleId}/screens`}>
+                Screens
+              </Link>
             </BreadcrumbItem>
 
             <BreadcrumbSeparator />
 
             <BreadcrumbItem>
-              <BreadcrumbPage className="text-gray-900 font-medium">
-                Bugs
-              </BreadcrumbPage>
+              <BreadcrumbPage>Bugs</BreadcrumbPage>
             </BreadcrumbItem>
+
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
-              Bug Tracker
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Track and manage bugs
-            </p>
-          </div>
+        {/* 🔹 HEADER */}
+        <div className="flex justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Bug Tracker</h1>
 
-          <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-sm">
-            <Plus className="w-4 h-4" />
-            Report Bug
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-red-600 text-white px-4 py-2 rounded"
+          >
+            + Report Bug
           </button>
         </div>
 
-        {/* Search */}
+        {/* 🔹 SEARCH */}
         <div className="mb-4 max-w-sm relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+
           <input
-            type="text"
             placeholder="Search bugs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-red-500"
+            className="w-full pl-9 pr-4 py-2 border rounded-lg"
           />
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <table className="w-full">
+        {/* 🔹 TABLE */}
+        <div className="overflow-x-auto">
+          <table className="w-full bg-white border rounded-xl overflow-hidden">
 
+            {/* HEADER */}
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                  Bug ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                  Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                  Severity
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                  Assigned
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                  Created
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">
-                  Actions
-                </th>
+                <th className="px-4 py-2 text-left text-xs">Bug ID</th>
+                <th className="px-4 py-2 text-left text-xs">TC ID</th>
+                <th className="px-4 py-2 text-left text-xs">Title</th>
+                <th className="px-4 py-2 text-left text-xs">Steps</th>
+                <th className="px-4 py-2 text-left text-xs">Actual</th>
+                <th className="px-4 py-2 text-left text-xs">Severity</th>
+                <th className="px-4 py-2 text-left text-xs">Status</th>
+                <th className="px-4 py-2 text-left text-xs">Assigned</th>
+                <th className="px-4 py-2 text-left text-xs">Created</th>
+                <th className="px-4 py-2 text-left text-xs">Actions</th>
               </tr>
             </thead>
 
+            {/* BODY */}
             <tbody>
-              {filtered.map((bug) => (
-                <tr key={bug.id} className="border-b hover:bg-gray-50">
+              {filtered.map((bug: any) => (
+                <tr key={bug.uuid} className="border-b hover:bg-gray-50">
 
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {bug.id}
+                  {/* Bug ID */}
+                  <td className="px-4 py-3">
+                    {bug.uuid.slice(0, 6)}
                   </td>
 
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-gray-900">
-                      {bug.title}
+                  {/* TC ID */}
+                  <td className="px-4 py-3">
+                    {bug.test_case ? bug.test_case.slice(0, 6) : "-"}
+                  </td>
+
+                  {/* Title */}
+                  <td className="px-4 py-3 font-medium">
+                    {bug.description}
+                  </td>
+
+                  {/* Steps */}
+                  <td className="px-4 py-3 max-w-xs">
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {bug.steps_to_reproduce || "N/A"}
                     </p>
-                    <p className="text-sm text-gray-500">
-                      {bug.description}
+                  </td>
+
+                  {/* Actual Results */}
+                  <td className="px-4 py-3 max-w-xs">
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {bug.actual_results || "N/A"}
                     </p>
                   </td>
 
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded ${severityStyles[bug.severity]}`}>
-                      {bug.severity}
-                    </span>
+                  {/* Severity */}
+                  <td className="px-4 py-3">
+                    {bug.severity}
                   </td>
 
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded ${statusStyles[bug.status]}`}>
-                      {bug.status}
-                    </span>
+                  {/* Status */}
+                  <td className="px-4 py-3">
+                    {bug.status}
                   </td>
 
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {bug.assignedTo}
+                  {/* Assigned */}
+                  <td className="px-4 py-3">
+                    {bug.created_by || "N/A"}
                   </td>
 
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {bug.createdDate}
+                  {/* Created */}
+                  <td className="px-4 py-3">
+                    {bug.created_at
+                      ? new Date(bug.created_at).toLocaleDateString()
+                      : "-"}
                   </td>
 
-                  <td className="px-6 py-4 flex gap-2">
-                    <button className="p-2 hover:bg-blue-50 rounded">
+                  {/* Actions */}
+                  <td className="px-4 py-3 flex gap-2">
+                    <button
+                      onClick={() => {
+                        setEditingBug(bug);
+                        setIsEditOpen(true);
+                      }}
+                    >
                       <Edit className="w-4 h-4 text-blue-600" />
                     </button>
-                    <button className="p-2 hover:bg-red-50 rounded">
+
+                    <button
+                      onClick={() => deleteMutation.mutate(bug.uuid)}
+                    >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </button>
                   </td>
@@ -222,6 +245,110 @@ export default function BugsPage() {
 
           </table>
         </div>
+
+        {/* 🔹 CREATE MODAL */}
+        <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create Bug">
+
+          <textarea
+            placeholder="Description"
+            className="border p-2 w-full mb-2"
+            onChange={(e) =>
+              setNewBug({ ...newBug, description: e.target.value })
+            }
+          />
+
+          <textarea
+            placeholder="Steps to Reproduce"
+            className="border p-2 w-full mb-2"
+            onChange={(e) =>
+              setNewBug({
+                ...newBug,
+                steps_to_reproduce: e.target.value,
+              })
+            }
+          />
+
+          <input
+            placeholder="Expected Results"
+            className="border p-2 w-full mb-2"
+            onChange={(e) =>
+              setNewBug({
+                ...newBug,
+                expected_results: e.target.value,
+              })
+            }
+          />
+
+          <input
+            placeholder="Actual Results"
+            className="border p-2 w-full"
+            onChange={(e) =>
+              setNewBug({
+                ...newBug,
+                actual_results: e.target.value,
+              })
+            }
+          />
+
+          <button
+            onClick={() => {
+              createMutation.mutate({
+                ...newBug,
+                project: projectId,
+                module: moduleId,
+                screen: screenId,
+              });
+              setIsCreateOpen(false);
+            }}
+            className="bg-red-600 text-white px-4 py-2 mt-3 rounded"
+          >
+            Create
+          </button>
+        </Modal>
+
+        {/* 🔹 EDIT MODAL */}
+        <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Bug">
+
+          {editingBug && (
+            <>
+              <textarea
+                value={editingBug.description}
+                className="border p-2 w-full mb-2"
+                onChange={(e) =>
+                  setEditingBug({
+                    ...editingBug,
+                    description: e.target.value,
+                  })
+                }
+              />
+
+              <textarea
+                value={editingBug.steps_to_reproduce}
+                className="border p-2 w-full mb-2"
+                onChange={(e) =>
+                  setEditingBug({
+                    ...editingBug,
+                    steps_to_reproduce: e.target.value,
+                  })
+                }
+              />
+
+              <button
+                onClick={() => {
+                  updateMutation.mutate({
+                    id: editingBug.uuid,
+                    data: editingBug,
+                  });
+                  setIsEditOpen(false);
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Update
+              </button>
+            </>
+          )}
+        </Modal>
+
       </div>
     </div>
   );

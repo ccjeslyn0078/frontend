@@ -36,7 +36,7 @@ export default function AdminRoutes() {
 
         {/* Test Cases */}
         <Route
-          path="projects/:projectId/modules/:moduleId/screens/:screenId/test-cases"
+          path="projects/:projectId/modules/:moduleId/screens/:screenId/testcases"
           element={<TestCasesPage />}
         />
 

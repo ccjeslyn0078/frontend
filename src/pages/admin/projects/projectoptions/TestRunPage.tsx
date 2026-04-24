@@ -1,239 +1,219 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { createTestRun } from "@/utils/api/testrun.api";
 
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/layout/BreadCrumb";
 
-import {
-  mockTestCases,
-  mockProjects,
-  mockModules,
-  mockScreens,
-} from "../../../../data/mockData";
-
-import { BugModal } from "@/components/BugModal";
+import { getTestCases } from "@/utils/api/testcase.api";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { BugModal } from "@/components/BugModal";
 
 export default function TestRun() {
   const { projectId, moduleId, screenId } = useParams();
 
-  const [testResults, setTestResults] = useState<
-    Record<string, { pass: boolean; fail: boolean; actualResult: string }>
-  >({});
-
+  const [testResults, setTestResults] = useState<any>({});
   const [bugModalOpen, setBugModalOpen] = useState(false);
   const [selectedTestCase, setSelectedTestCase] = useState<any>(null);
 
-  const project = mockProjects.find((p) => String(p.id) === String(projectId));
-  const module = mockModules.find((m) => String(m.id) === String(moduleId));
-  const screen = mockScreens.find((s) => String(s.id) === String(screenId));
+  //  FETCH TESTCASES FROM BACKEND
+  const { data } = useQuery({
+    queryKey: ["testcases", screenId],
+    queryFn: () => getTestCases(screenId as string),
+    enabled: !!screenId,
+  });
 
-  const testCases =
-    mockTestCases.filter(
-      (tc) => String(tc.screenId) === String(screenId)
-    ).length > 0
-      ? mockTestCases.filter(
-          (tc) => String(tc.screenId) === String(screenId)
-        )
-      : mockTestCases;
+  const testCases = Array.isArray(data) ? data : data?.results || [];
 
   const handlePassChange = (tcId: string, checked: boolean) => {
-    setTestResults((prev) => ({
+    setTestResults((prev: any) => ({
       ...prev,
       [tcId]: {
         ...prev[tcId],
         pass: checked,
-        fail: checked ? false : prev[tcId]?.fail || false,
-        actualResult: prev[tcId]?.actualResult || "",
+        fail: checked ? false : prev[tcId]?.fail,
       },
     }));
   };
 
-  const handleFailChange = (
-    tcId: string,
-    checked: boolean,
-    testCase: any
-  ) => {
-    setTestResults((prev) => ({
+  const handleFailChange = (tc: any, checked: boolean) => {
+    setTestResults((prev: any) => ({
       ...prev,
-      [tcId]: {
-        ...prev[tcId],
-        pass: checked ? false : prev[tcId]?.pass || false,
+      [tc.uuid]: {
+        ...prev[tc.uuid],
+        pass: checked ? false : prev[tc.uuid]?.pass,
         fail: checked,
-        actualResult: prev[tcId]?.actualResult || "",
       },
     }));
 
+    // 🔥 OPEN BUG MODAL
     if (checked) {
-      setSelectedTestCase(testCase);
+      setSelectedTestCase(tc);
       setBugModalOpen(true);
     }
   };
 
-  const handleActualResultChange = (tcId: string, value: string) => {
-    setTestResults((prev) => ({
-      ...prev,
-      [tcId]: {
-        ...prev[tcId],
-        actualResult: value,
-        pass: prev[tcId]?.pass || false,
-        fail: prev[tcId]?.fail || false,
-      },
-    }));
-  };
+  const handleActualChange = (tcId: string, value: string) => {
+  setTestResults((prev: any) => ({
+    ...prev,
+    [tcId]: {
+      ...prev[tcId],
+      actual: value,
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "High":
-        return "bg-red-100 text-red-700";
-      case "Medium":
-        return "bg-yellow-100 text-yellow-700";
-      case "Low":
-        return "bg-green-100 text-green-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
+      // ✅ DEFAULT TO PASS IF NOT SELECTED
+      pass: prev[tcId]?.pass ?? true,
+      fail: prev[tcId]?.fail ?? false,
+    },
+  }));
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-6 py-6">
 
-        {/* Breadcrumb */}
+        {/* BREADCRUMB */}
         <Breadcrumb className="mb-6">
-          <BreadcrumbList className="text-sm text-gray-500 flex items-center gap-2">
-
+          <BreadcrumbList className="flex gap-2 text-sm text-gray-500">
             <BreadcrumbItem>
-              <BreadcrumbLink href="/projects">Projects</BreadcrumbLink>
+              <Link to="/projects">Projects</Link>
             </BreadcrumbItem>
-
             <BreadcrumbSeparator />
-
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/projects/${projectId}/modules`}>
-                {project?.name || "Project"}
-              </BreadcrumbLink>
+              <Link to={`/projects/${projectId}/modules`}>
+                Modules
+              </Link>
             </BreadcrumbItem>
-
             <BreadcrumbSeparator />
-
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/projects/${projectId}/modules/${moduleId}/screens`}>
-                {module?.name || "Module"}
-              </BreadcrumbLink>
+              <Link to={`/projects/${projectId}/modules/${moduleId}/screens`}>
+                Screens
+              </Link>
             </BreadcrumbItem>
-
             <BreadcrumbSeparator />
-
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                {screen?.name || "Screen"}
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-
-            <BreadcrumbSeparator />
-
             <BreadcrumbItem>
               <BreadcrumbPage>Test Run</BreadcrumbPage>
             </BreadcrumbItem>
-
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Test Run
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Execute and record test case results
-          </p>
-        </div>
+        {/* HEADER */}
+        <h1 className="text-2xl font-semibold mb-4">Test Run</h1>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        {/* TABLE */}
+        <div className="overflow-x-auto bg-white border rounded-xl">
+          <table className="w-full">
 
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">TC ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Expected</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actual</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Priority</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Pass</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Fail</th>
-                </tr>
-              </thead>
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="p-3 text-left">TC ID</th>
+                <th className="p-3 text-left">Title</th>
+                <th className="p-3 text-left">Expected</th>
+                <th className="p-3 text-left">Actual</th>
+                <th className="p-3 text-center">Pass</th>
+                <th className="p-3 text-center">Fail</th>
+              </tr>
+            </thead>
 
-              <tbody>
-                {testCases.map((tc) => (
-                  <tr key={tc.id} className="border-b hover:bg-gray-50">
+            <tbody>
+              {testCases.map((tc: any) => (
+                <tr key={tc.uuid} className="border-b">
 
-                    <td className="px-6 py-4">{tc.id}</td>
-                    <td className="px-6 py-4">{tc.title}</td>
-                    <td className="px-6 py-4">{tc.description}</td>
-                    <td className="px-6 py-4">{tc.expectedResult}</td>
+                  <td className="p-3">{tc.uuid.slice(0, 6)}</td>
 
-                    {/* ✅ FIXED TEXTAREA */}
-                    <td className="px-6 py-4">
+                  <td className="p-3">{tc.title}</td>
+
+                  <td className="p-3">{tc.expected_results}</td>
+
+                  {/* 🔥 UPDATED ACTUAL COLUMN */}
+                  <td className="p-3">
+                    <div className="flex flex-col gap-2">
+
                       <Textarea
-                        value={testResults[tc.id]?.actualResult || ""}
+                        value={testResults[tc.uuid]?.actual || ""}
                         onChange={(e) =>
-                          handleActualResultChange(tc.id, e.target.value)
-                        }
-                        placeholder="Enter actual result..."
-                        className="w-[220px] h-[80px] resize-none overflow-auto text-sm"
-                      />
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs rounded ${getPriorityColor(tc.priority)}`}>
-                        {tc.priority}
-                      </span>
-                    </td>
-
-                    <td className="text-center">
-                      <Checkbox
-                        checked={testResults[tc.id]?.pass || false}
-                        onCheckedChange={(checked) =>
-                          handlePassChange(tc.id, checked as boolean)
+                          handleActualChange(tc.uuid, e.target.value)
                         }
                       />
-                    </td>
 
-                    <td className="text-center">
-                      <Checkbox
-                        checked={testResults[tc.id]?.fail || false}
-                        onCheckedChange={(checked) =>
-                          handleFailChange(tc.id, checked as boolean, tc)
-                        }
-                      />
-                    </td>
+                      {/* DONE BUTTON */}
+                     <button
+  onClick={async () => {
+    const result = testResults[tc.uuid];
 
-                  </tr>
-                ))}
-              </tbody>
+    console.log("RESULT:", result);
 
-            </table>
-          </div>
+    // ✅ ONLY CHECK ACTUAL RESULT
+    if (!result?.actual) {
+      alert("Enter actual result");
+      return;
+    }
+
+    try {
+      const res = await createTestRun({
+        test_case: tc.uuid,
+        actual_results: result.actual,
+
+        // ✅ BOOLEAN → STATUS
+        status: result.fail ? "fail" : "pass",
+      });
+
+      console.log("SUCCESS:", res);
+
+    } catch (err) {
+      console.error("ERROR:", err);
+    }
+  }}
+  className="self-end bg-blue-600 text-white px-2 py-1 text-xs rounded hover:bg-blue-700"
+>
+  Done
+</button>
+
+                    </div>
+                  </td>
+
+                  <td className="text-center">
+                    <Checkbox
+                      checked={testResults[tc.uuid]?.pass || false}
+                      onCheckedChange={(val) =>
+                        handlePassChange(tc.uuid, val as boolean)
+                      }
+                    />
+                  </td>
+
+                  <td className="text-center">
+                    <Checkbox
+                      checked={testResults[tc.uuid]?.fail || false}
+                      onCheckedChange={(val) =>
+                        handleFailChange(tc, val as boolean)
+                      }
+                    />
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+
+          </table>
         </div>
 
       </div>
 
+      {/* 🔥 UPDATED BUG MODAL */}
       <BugModal
         isOpen={bugModalOpen}
         onClose={() => setBugModalOpen(false)}
         testCase={selectedTestCase}
+        projectId={projectId}
+        moduleId={moduleId}
+        screenId={screenId}
+        actualResult={testResults[selectedTestCase?.uuid]?.actual}
       />
     </div>
   );

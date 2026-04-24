@@ -2,36 +2,36 @@ import API from "@/utils/api/fetchclient";
 
 // GET all modules (by project)
 export const getModules = async (projectId: string) => {
-  return API(`/projects/modules/?project=${projectId}`, {
+  return API(`/modules/?project=${projectId}`, {
     method: "GET",
   });
 };
 
 // CREATE module
 export const createModule = async (data: any) => {
-  return API("/projects/modules/", {
+  return API("/modules/", {
     method: "POST",
     body: JSON.stringify({
       name: data.name,
-      project: data.projectId, // ✅ required
+      project: data.projectId,
     }),
   });
 };
 
 // UPDATE module
 export const updateModule = async ({ id, data }: any) => {
-  return API(`/projects/modules/${id}/`, {
+  return API(`/modules/${id}/`, {
     method: "PUT",
     body: JSON.stringify({
       name: data.name,
-      project: data.projectId, // ✅ required
+      project: data.projectId,
     }),
   });
 };
 
 // DELETE module
 export const deleteModule = async (id: string) => {
-  return API(`/projects/modules/${id}/`, {
+  return API(`/modules/${id}/`, {
     method: "DELETE",
   });
 };

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { ClipboardList, Play, Bug } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
 interface SelectionPopupProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ export function SelectionPopup({
       color: 'bg-blue-500',
       hoverColor: 'hover:bg-blue-50',
       iconBg: 'bg-blue-100',
-      path: `/projects/${projectId}/modules/${moduleId}/screens/${screenId}/test-cases`,
+      path: `/projects/${projectId}/modules/${moduleId}/screens/${screenId}/testcases`,
     },
     {
       title: 'Test Run',
@@ -57,32 +57,53 @@ export function SelectionPopup({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Select Action for {screenName}</DialogTitle>
-        </DialogHeader>
-        <div className="grid grid-cols-1 gap-4 mt-4">
-          {options.map((option) => {
-            const Icon = option.icon;
-            return (
-              <button
-                key={option.title}
-                onClick={() => handleSelect(option.path)}
-                className={`flex items-center gap-4 p-4 rounded-lg border-2 border-gray-200 ${option.hoverColor} transition-all hover:border-gray-300 text-left`}
-              >
-                <div className={`${option.iconBg} p-3 rounded-lg`}>
-                  <Icon className={`w-6 h-6 ${option.color.replace('bg-', 'text-')}`} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800">{option.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{option.description}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+  <Dialog open={isOpen} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-lg">
+      
+      <DialogHeader>
+        <DialogTitle>
+          Select Action for {screenName}
+        </DialogTitle>
+
+        {/* 🔥 FIX: Added Description */}
+        <DialogDescription>
+          Choose what you want to do with this screen
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="grid grid-cols-1 gap-4 mt-4">
+        {options.map((option) => {
+          const Icon = option.icon;
+
+          return (
+            <button
+              key={option.title}
+              onClick={() => handleSelect(option.path)}
+              className={`flex items-center gap-4 p-4 rounded-lg border-2 border-gray-200 ${option.hoverColor} transition-all hover:border-gray-300 text-left`}
+            >
+              <div className={`${option.iconBg} p-3 rounded-lg`}>
+                <Icon
+                  className={`w-6 h-6 ${option.color.replace(
+                    "bg-",
+                    "text-"
+                  )}`}
+                />
+              </div>
+
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-800">
+                  {option.title}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {option.description}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+    </DialogContent>
+  </Dialog>
+);
 }

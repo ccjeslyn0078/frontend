@@ -1,107 +1,108 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Input } from '@/components/ui/Input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { useState, useEffect } from "react";
+import { createBug } from "@/utils/api/bug.api";
 
-interface BugModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  testCase?: any;
-}
-
-export function BugModal({ isOpen, onClose, testCase }: BugModalProps) {
-  const [formData, setFormData] = useState({
-    title: '',
-    severity: 'Medium',
-    assignedTo: '',
+export function BugModal({
+  isOpen,
+  onClose,
+  testCase,
+  projectId,
+  moduleId,
+  screenId,
+  actualResult,
+}: any) {
+  const [form, setForm] = useState({
+    description: "",
+    steps_to_reproduce: "",
+    expected_results: "",
+    severity: "high",
   });
 
   useEffect(() => {
     if (testCase) {
-      setFormData({
-        title: `Bug in ${testCase.title}`,
-        severity: testCase.priority || 'Medium',
-        assignedTo: '',
-      });
+      setForm((prev) => ({
+        ...prev,
+        expected_results: testCase.expected_results || "",
+      }));
     }
   }, [testCase]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Create bug:', formData);
-    onClose();
-  };
+  if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create Bug Report</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {testCase && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Test Case ID: <span className="font-medium text-gray-800">{testCase.id}</span></p>
-              <p className="text-sm text-gray-600">Title: <span className="font-medium text-gray-800">{testCase.title}</span></p>
-            </div>
-          )}
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
 
-          <div className="space-y-2">
-            <Label htmlFor="bugTitle">Bug Title</Label>
-            <Input
-              id="bugTitle"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Enter bug title"
-              required
-            />
-          </div>
+      <div className="bg-white rounded-lg shadow-lg w-[450px] p-6 space-y-4">
 
-          <div className="space-y-2">
-            <Label htmlFor="severity">Severity</Label>
-            <Select value={formData.severity} onValueChange={(value) => setFormData({ ...formData, severity: value })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Critical">Critical</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="Low">Low</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <h2 className="text-xl font-semibold">
+          Report Bug
+        </h2>
 
-          <div className="space-y-2">
-            <Label htmlFor="assignedTo">Assigned To</Label>
-            <Input
-              id="assignedTo"
-              value={formData.assignedTo}
-              onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-              placeholder="Enter assignee name"
-              required
-            />
-          </div>
+        {/* 🔹 SHOW ACTUAL (READ ONLY) */}
+        <div className="text-sm text-gray-600 bg-gray-100 p-2 rounded">
+          <strong>Actual Result:</strong> {actualResult || "Not provided"}
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Create Bug
-            </button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <textarea
+          placeholder="Description"
+          className="w-full border rounded-md p-2"
+          onChange={(e) =>
+            setForm({ ...form, description: e.target.value })
+          }
+        />
+
+        <textarea
+          placeholder="Steps to reproduce"
+          className="w-full border rounded-md p-2"
+          onChange={(e) =>
+            setForm({ ...form, steps_to_reproduce: e.target.value })
+          }
+        />
+
+        <select
+          className="w-full border rounded-md p-2"
+          onChange={(e) =>
+            setForm({ ...form, severity: e.target.value })
+          }
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+
+        {/* 🔥 BUTTONS */}
+        <div className="flex justify-between">
+
+          {/* 🔙 BACK BUTTON */}
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 rounded-md"
+          >
+            Back
+          </button>
+
+          {/* CREATE */}
+          <button
+            onClick={async () => {
+              await createBug({
+                ...form,
+                actual_results: actualResult,
+                project: projectId,
+                module: moduleId,
+                screen: screenId,
+                test_case: testCase?.uuid,
+              });
+
+              onClose();
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded-md"
+          >
+            Create Bug
+          </button>
+
+        </div>
+
+      </div>
+    </div>
   );
 }
