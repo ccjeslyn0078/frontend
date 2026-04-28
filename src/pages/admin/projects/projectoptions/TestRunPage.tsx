@@ -16,18 +16,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { BugModal } from "@/components/BugModal";
 
-import { getRole, can } from "@/utils/api/permissions"; // ✅ added
+// ✅ UPDATED IMPORT
+import { useAuth } from "@/context/AuthContext";
+import { can } from "@/utils/api/permissions";
 
 export default function TestRun() {
   const { projectId, moduleId, screenId } = useParams();
 
-  const role = getRole(); // ✅ ONLY ONCE
+  // ✅ GET ROLE FROM AUTH CONTEXT
+  const { user } = useAuth();
+  const role = user?.role || "";
 
   const [testResults, setTestResults] = useState<any>({});
   const [bugModalOpen, setBugModalOpen] = useState(false);
   const [selectedTestCase, setSelectedTestCase] = useState<any>(null);
 
-  // FETCH
   const { data } = useQuery({
     queryKey: ["testcases", screenId],
     queryFn: () => getTestCases(screenId as string),
@@ -57,7 +60,6 @@ export default function TestRun() {
       },
     }));
 
-    // OPEN BUG MODAL
     if (checked) {
       setSelectedTestCase(tc);
       setBugModalOpen(true);
@@ -135,16 +137,15 @@ export default function TestRun() {
                   <td className="p-3">
                     <div className="flex flex-col gap-2">
 
-                      {/* 🔥 DISABLE FOR REVIEWER */}
                       <Textarea
                         disabled={!can(role, "testruns", "update")}
                         value={testResults[tc.uuid]?.actual || ""}
                         onChange={(e) =>
                           handleActualChange(tc.uuid, e.target.value)
                         }
+                        className="h-24 resize-none overflow-y-auto"
                       />
 
-                      {/* 🔥 DONE BUTTON PERMISSION */}
                       {can(role, "testruns", "create") && (
                         <button
                           onClick={async () => {
@@ -174,7 +175,6 @@ export default function TestRun() {
                     </div>
                   </td>
 
-                  {/* 🔥 DISABLE CHECKBOXES FOR REVIEWER */}
                   <td className="text-center">
                     <Checkbox
                       disabled={!can(role, "testruns", "update")}
@@ -204,7 +204,7 @@ export default function TestRun() {
 
       </div>
 
-      {/* BUG MODAL (unchanged) */}
+      {/* BUG MODAL */}
       <BugModal
         isOpen={bugModalOpen}
         onClose={() => setBugModalOpen(false)}

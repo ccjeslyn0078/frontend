@@ -30,7 +30,6 @@ export function BugModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-
       <div className="bg-white rounded-lg shadow-lg w-[450px] p-6 space-y-4">
 
         <h2 className="text-xl font-semibold">
@@ -45,6 +44,7 @@ export function BugModal({
         <textarea
           placeholder="Description"
           className="w-full border rounded-md p-2"
+          value={form.description}
           onChange={(e) =>
             setForm({ ...form, description: e.target.value })
           }
@@ -53,22 +53,31 @@ export function BugModal({
         <textarea
           placeholder="Steps to reproduce"
           className="w-full border rounded-md p-2"
+          value={form.steps_to_reproduce}
           onChange={(e) =>
             setForm({ ...form, steps_to_reproduce: e.target.value })
           }
         />
 
-        <select
-          className="w-full border rounded-md p-2"
-          onChange={(e) =>
-            setForm({ ...form, severity: e.target.value })
-          }
-        >
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-          <option value="critical">Critical</option>
-        </select>
+        {/* ✅ IMPROVED SEVERITY DROPDOWN */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Severity
+          </label>
+
+          <select
+            value={form.severity}
+            className="w-full border rounded-md p-2"
+            onChange={(e) =>
+              setForm({ ...form, severity: e.target.value })
+            }
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
 
         {/* 🔥 BUTTONS */}
         <div className="flex justify-between">
