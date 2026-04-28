@@ -26,9 +26,13 @@ import {
   deleteScreen,
 } from "@/utils/api/screens.api";
 
+import { getRole, can } from "@/utils/api/permissions"; // ✅ added
+
 export function Screens() {
   const { projectId, moduleId } = useParams();
   const queryClient = useQueryClient();
+
+  const role = getRole(); // ✅ ONLY ONCE
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingScreen, setEditingScreen] = useState<any>(null);
@@ -124,7 +128,7 @@ export function Screens() {
 
   return (
     <div className="p-6">
-      {/* ✅ FINAL FIXED BREADCRUMB */}
+      {/* BREADCRUMB */}
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -151,19 +155,22 @@ export function Screens() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold text-gray-800">
           Screens
         </h2>
 
-        <button
-          onClick={handleAdd}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Create Screen
-        </button>
+        {/* 🔥 CREATE */}
+        {can(role, "screens", "create") && (
+          <button
+            onClick={handleAdd}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Create Screen
+          </button>
+        )}
       </div>
 
       {/* TABLE */}
@@ -186,6 +193,8 @@ export function Screens() {
           <tbody>
             {screens.map((screen: any) => (
               <tr key={screen.uuid}>
+
+                {/* 🔥 VIEW CLICK (allowed for read roles) */}
                 <td className="px-6 py-4">
                   <button
                     onClick={() =>
@@ -201,26 +210,34 @@ export function Screens() {
                   {screen.description || "-"}
                 </td>
 
+                {/* 🔥 ACTIONS */}
                 <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => handleEdit(screen)}
-                    className="mr-2"
-                  >
-                    <Pencil />
-                  </button>
 
-                  <button
-                    onClick={() => {
-                      setScreenToDelete(screen);
-                      setIsDeleteModalOpen(true);
-                    }}
-                  >
-                    <Trash2 />
-                  </button>
+                  {can(role, "screens", "update") && (
+                    <button
+                      onClick={() => handleEdit(screen)}
+                      className="mr-2"
+                    >
+                      <Pencil />
+                    </button>
+                  )}
+
+                  {can(role, "screens", "delete") && (
+                    <button
+                      onClick={() => {
+                        setScreenToDelete(screen);
+                        setIsDeleteModalOpen(true);
+                      }}
+                    >
+                      <Trash2 />
+                    </button>
+                  )}
+
                 </td>
               </tr>
             ))}
           </tbody>
+
         </table>
       </div>
 

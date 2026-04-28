@@ -25,19 +25,21 @@ import {
   deleteModule,
 } from "@/utils/api/modules.api";
 
+import { getRole, can } from "@/utils/api/permissions"; // ✅ added
+
 export function Modules() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const role = getRole(); // ✅ ONLY ONCE
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<any>(null);
 
-  // ✅ NEW DELETE STATES
   const [moduleToDelete, setModuleToDelete] = useState<any>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // 🔥 FETCH MODULES
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["modules", projectId],
     queryFn: () => getModules(projectId!),
@@ -66,7 +68,7 @@ export function Modules() {
     navigate(`/projects/${projectId}/modules/${module.uuid}/screens`);
   };
 
-  // ➕ CREATE
+  // CREATE
   const createMutation = useMutation({
     mutationFn: createModule,
     onSuccess: () => {
@@ -76,7 +78,7 @@ export function Modules() {
     },
   });
 
-  // ✏️ UPDATE
+  // UPDATE
   const updateMutation = useMutation({
     mutationFn: updateModule,
     onSuccess: () => {
@@ -84,7 +86,7 @@ export function Modules() {
     },
   });
 
-  // ❌ DELETE
+  // DELETE
   const deleteMutation = useMutation({
     mutationFn: deleteModule,
     onSuccess: (_, deletedId) => {
@@ -133,17 +135,20 @@ export function Modules() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex justify-between mb-6">
         <h1 className="text-2xl font-semibold">Modules</h1>
 
-        <button
-          onClick={handleAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Module
-        </button>
+        {/* 🔥 CREATE BUTTON */}
+        {can(role, "modules", "create") && (
+          <button
+            onClick={handleAdd}
+            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Module
+          </button>
+        )}
       </div>
 
       {/* GRID */}
@@ -158,26 +163,32 @@ export function Modules() {
               <FolderKanban className="text-blue-600" />
 
               <div className="flex gap-2">
-                {/* EDIT */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEdit(module);
-                  }}
-                >
-                  <Pencil className="w-4 h-4 text-blue-500" />
-                </button>
 
-                {/* DELETE (UPDATED) */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setModuleToDelete(module);
-                    setIsDeleteModalOpen(true);
-                  }}
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </button>
+                {/* 🔥 EDIT */}
+                {can(role, "modules", "update") && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(module);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 text-blue-500" />
+                  </button>
+                )}
+
+                {/* 🔥 DELETE */}
+                {can(role, "modules", "delete") && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setModuleToDelete(module);
+                      setIsDeleteModalOpen(true);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
+                )}
+
               </div>
             </div>
 
@@ -211,7 +222,7 @@ export function Modules() {
         }}
       />
 
-      {/* 🔥 DELETE CONFIRM MODAL */}
+      {/* DELETE MODAL */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/20 z-50">
           <div className="bg-white rounded-lg p-6 w-[400px] shadow-lg">

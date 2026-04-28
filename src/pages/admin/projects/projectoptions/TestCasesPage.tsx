@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Pencil, Trash2, Plus } from "lucide-react";
@@ -16,6 +15,7 @@ import {
   updateTestCase,
   deleteTestCase,
 } from "../../../../utils/api/testcase.api";
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,10 +25,13 @@ import {
 } from "@/components/layout/BreadCrumb";
 
 import { Link } from "react-router-dom";
+import { getRole, can } from "@/utils/api/permissions";
 
 export default function TestCasesPage() {
   const { projectId, moduleId, screenId } = useParams();
   const queryClient = useQueryClient();
+
+  const role = getRole(); // ✅ ONLY ONCE
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -145,13 +148,16 @@ export default function TestCasesPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-600"
-        >
-          <Plus className="w-4 h-4" />
-          Create Test Case
-        </button>
+        {/* 🔥 CREATE BUTTON CONTROL */}
+        {can(role, "testcases", "create") && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-600"
+          >
+            <Plus className="w-4 h-4" />
+            Create Test Case
+          </button>
+        )}
       </div>
 
       {/* SEARCH */}
@@ -208,28 +214,33 @@ export default function TestCasesPage() {
                   </span>
                 </td>
 
+                {/* 🔥 ACTIONS WITH PERMISSIONS */}
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
 
-                    <button
-                      onClick={() => {
-                        setEditingTestCase(tc);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="p-2 hover:bg-blue-50 rounded"
-                    >
-                      <Pencil className="w-4 h-4 text-blue-600" />
-                    </button>
+                    {can(role, "testcases", "update") && (
+                      <button
+                        onClick={() => {
+                          setEditingTestCase(tc);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="p-2 hover:bg-blue-50 rounded"
+                      >
+                        <Pencil className="w-4 h-4 text-blue-600" />
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => {
-                        setTestcaseToDelete(tc);
-                        setIsDeleteModalOpen(true);
-                      }}
-                      className="p-2 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </button>
+                    {can(role, "testcases", "delete") && (
+                      <button
+                        onClick={() => {
+                          setTestcaseToDelete(tc);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        className="p-2 hover:bg-red-50 rounded"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
+                    )}
 
                   </div>
                 </td>
@@ -241,6 +252,7 @@ export default function TestCasesPage() {
         </table>
       </div>
 
+      {/* CREATE MODAL */}
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
@@ -273,7 +285,6 @@ export default function TestCasesPage() {
           }
         />
 
-        {/* 🔥 NEW PRIORITY DROPDOWN */}
         <select
           className="border p-2 w-full mb-2"
           value={newTestCase.priority}

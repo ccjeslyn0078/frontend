@@ -20,9 +20,13 @@ import {
   deleteProject,
 } from "@/utils/api/project.api";
 
+import { getRole, can } from "@/utils/api/permissions"; // ✅ added
+
 export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const role = getRole(); // ✅ ONLY ONCE
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -36,8 +40,7 @@ export function ProjectsPage() {
   const [projectToDelete, setProjectToDelete] = useState<any>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // 🔥 FETCH PROJECTS
-  const { data, isLoading, isError ,refetch} = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["projects"],
     queryFn: getProjects,
   });
@@ -46,7 +49,7 @@ export function ProjectsPage() {
     ? data
     : data?.results || [];
 
-  // ➕ CREATE
+  // CREATE
   const createMutation = useMutation({
     mutationFn: createProject,
     onSuccess: () => {
@@ -54,37 +57,34 @@ export function ProjectsPage() {
     },
   });
 
-  // ✏️ UPDATE (instant UI update)
+  // UPDATE
   const updateMutation = useMutation({
     mutationFn: updateProject,
-
     onSuccess: () => {
-     refetch();
+      refetch();
     },
   });
 
-  // ❌ DELETE (instant UI removal)
+  // DELETE
   const deleteMutation = useMutation({
-  mutationFn: deleteProject,
+    mutationFn: deleteProject,
+    onSuccess: (_, variables) => {
+      const deletedId = variables;
 
-  onSuccess: (_, variables) => {
-    const deletedId = variables; // 👈 THIS is the real id
+      queryClient.setQueryData(["projects"], (old: any) => {
+        if (!old) return old;
 
-    queryClient.setQueryData(["projects"], (old: any) => {
-      if (!old) return old;
+        const filtered = (Array.isArray(old) ? old : old.results).filter(
+          (proj: any) => proj.id !== deletedId
+        );
 
-      const filtered = (Array.isArray(old) ? old : old.results).filter(
-        (proj: any) => proj.id !== deletedId
-      );
+        return Array.isArray(old)
+          ? filtered
+          : { ...old, results: filtered };
+      });
+    },
+  });
 
-      return Array.isArray(old)
-        ? filtered
-        : { ...old, results: filtered };
-    });
-  },
-});
-
-  // ✅ NAVIGATION FIX
   const handleProjectClick = (project: any) => {
     navigate(`/projects/${project.id}/modules`);
   };
@@ -106,12 +106,15 @@ export function ProjectsPage() {
       <div className="flex justify-between mb-6">
         <h1 className="text-2xl font-semibold">Projects</h1>
 
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          + New Project
-        </button>
+        {/* 🔥 CREATE */}
+        {can(role, "projects", "create") && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            + New Project
+          </button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -125,25 +128,33 @@ export function ProjectsPage() {
               <FolderKanban className="text-blue-600" />
 
               <div className="flex gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingProject(project);
-                    setIsEditModalOpen(true);
-                  }}
-                >
-                  <Pencil className="w-4 h-4 text-blue-500" />
-                </button>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProjectToDelete(project);
-                    setIsDeleteModalOpen(true);
-                  }}
-                >
-                  <Trash2 className="w-4 h-4 text-red-500" />
-                </button>
+                {/* 🔥 UPDATE */}
+                {can(role, "projects", "update") && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingProject(project);
+                      setIsEditModalOpen(true);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4 text-blue-500" />
+                  </button>
+                )}
+
+                {/* 🔥 DELETE */}
+                {can(role, "projects", "delete") && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProjectToDelete(project);
+                      setIsDeleteModalOpen(true);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
+                )}
+
               </div>
             </div>
 
@@ -249,8 +260,7 @@ export function ProjectsPage() {
                     id: editingProject.id,
                     data: {
                       title: editingProject.title,
-                      description:
-                        editingProject.description,
+                      description: editingProject.description,
                     },
                   });
                   setIsEditModalOpen(false);
@@ -270,9 +280,7 @@ export function ProjectsPage() {
         onClose={() => setIsDeleteModalOpen(false)}
         title="Delete Project"
       >
-        <p>
-          Are you sure you want to delete this project?
-        </p>
+        <p>Are you sure you want to delete this project?</p>
 
         <div className="flex gap-2 mt-3">
           <button

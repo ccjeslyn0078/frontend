@@ -24,13 +24,15 @@ import {
 } from "@/utils/api/bug.api";
 
 import { Modal } from "@/components/ui/Modal";
+import { getRole, can } from "@/utils/api/permissions";
 
 export default function BugsPage() {
   const { projectId, moduleId, screenId } = useParams();
   const queryClient = useQueryClient();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const role = getRole(); // ✅ ONLY ONCE
 
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newBug, setNewBug] = useState({
@@ -41,10 +43,8 @@ export default function BugsPage() {
     actual_results: "",
   });
 
-
   const [editingBug, setEditingBug] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-
 
   const { data, isLoading } = useQuery({
     queryKey: ["bugs", screenId],
@@ -62,7 +62,7 @@ export default function BugsPage() {
     },
   });
 
-  //  UPDATE
+  // UPDATE
   const updateMutation = useMutation({
     mutationFn: updateBug,
     onSuccess: () => {
@@ -70,7 +70,7 @@ export default function BugsPage() {
     },
   });
 
-  //  DELETE
+  // DELETE
   const deleteMutation = useMutation({
     mutationFn: deleteBug,
     onSuccess: () => {
@@ -125,12 +125,14 @@ export default function BugsPage() {
         <div className="flex justify-between mb-6">
           <h1 className="text-2xl font-semibold">Bug Tracker</h1>
 
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-red-600 text-white px-4 py-2 rounded"
-          >
-            + Report Bug
-          </button>
+          {can(role, "bugs", "create") && (
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-red-600 text-white px-4 py-2 rounded"
+            >
+              + Report Bug
+            </button>
+          )}
         </div>
 
         {/* 🔹 SEARCH */}
@@ -149,7 +151,6 @@ export default function BugsPage() {
         <div className="overflow-x-auto">
           <table className="w-full bg-white border rounded-xl overflow-hidden">
 
-            {/* HEADER */}
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-2 text-left text-xs">Bug ID</th>
@@ -165,78 +166,68 @@ export default function BugsPage() {
               </tr>
             </thead>
 
-            {/* BODY */}
             <tbody>
               {filtered.map((bug: any) => (
                 <tr key={bug.uuid} className="border-b hover:bg-gray-50">
 
-                  {/* Bug ID */}
-                  <td className="px-4 py-3">
-                    {bug.uuid.slice(0, 6)}
-                  </td>
+                  <td className="px-4 py-3">{bug.uuid.slice(0, 6)}</td>
 
-                  {/* TC ID */}
                   <td className="px-4 py-3">
                     {bug.test_case ? bug.test_case.slice(0, 6) : "-"}
                   </td>
 
-                  {/* Title */}
                   <td className="px-4 py-3 font-medium">
                     {bug.description}
                   </td>
 
-                  {/* Steps */}
                   <td className="px-4 py-3 max-w-xs">
                     <p className="text-sm text-gray-600 line-clamp-2">
                       {bug.steps_to_reproduce || "N/A"}
                     </p>
                   </td>
 
-                  {/* Actual Results */}
                   <td className="px-4 py-3 max-w-xs">
                     <p className="text-sm text-gray-600 line-clamp-2">
                       {bug.actual_results || "N/A"}
                     </p>
                   </td>
 
-                  {/* Severity */}
-                  <td className="px-4 py-3">
-                    {bug.severity}
-                  </td>
+                  <td className="px-4 py-3">{bug.severity}</td>
 
-                  {/* Status */}
-                  <td className="px-4 py-3">
-                    {bug.status}
-                  </td>
+                  <td className="px-4 py-3">{bug.status}</td>
 
-                  {/* Assigned */}
                   <td className="px-4 py-3">
                     {bug.created_by || "N/A"}
                   </td>
 
-                  {/* Created */}
                   <td className="px-4 py-3">
                     {bug.created_at
                       ? new Date(bug.created_at).toLocaleDateString()
                       : "-"}
                   </td>
 
-                  {/* Actions */}
+                  {/* 🔥 PERMISSION BASED ACTIONS */}
                   <td className="px-4 py-3 flex gap-2">
-                    <button
-                      onClick={() => {
-                        setEditingBug(bug);
-                        setIsEditOpen(true);
-                      }}
-                    >
-                      <Edit className="w-4 h-4 text-blue-600" />
-                    </button>
 
-                    <button
-                      onClick={() => deleteMutation.mutate(bug.uuid)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </button>
+                    {can(role, "bugs", "update") && (
+                      <button
+                        onClick={() => {
+                          setEditingBug(bug);
+                          setIsEditOpen(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4 text-blue-600" />
+                      </button>
+                    )}
+
+                    {can(role, "bugs", "delete") && (
+                      <button
+                        onClick={() => deleteMutation.mutate(bug.uuid)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
+                    )}
+
                   </td>
 
                 </tr>

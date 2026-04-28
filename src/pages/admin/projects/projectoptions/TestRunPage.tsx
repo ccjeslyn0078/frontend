@@ -16,14 +16,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { BugModal } from "@/components/BugModal";
 
+import { getRole, can } from "@/utils/api/permissions"; // ✅ added
+
 export default function TestRun() {
   const { projectId, moduleId, screenId } = useParams();
+
+  const role = getRole(); // ✅ ONLY ONCE
 
   const [testResults, setTestResults] = useState<any>({});
   const [bugModalOpen, setBugModalOpen] = useState(false);
   const [selectedTestCase, setSelectedTestCase] = useState<any>(null);
 
-  //  FETCH TESTCASES FROM BACKEND
+  // FETCH
   const { data } = useQuery({
     queryKey: ["testcases", screenId],
     queryFn: () => getTestCases(screenId as string),
@@ -53,7 +57,7 @@ export default function TestRun() {
       },
     }));
 
-    // 🔥 OPEN BUG MODAL
+    // OPEN BUG MODAL
     if (checked) {
       setSelectedTestCase(tc);
       setBugModalOpen(true);
@@ -61,18 +65,16 @@ export default function TestRun() {
   };
 
   const handleActualChange = (tcId: string, value: string) => {
-  setTestResults((prev: any) => ({
-    ...prev,
-    [tcId]: {
-      ...prev[tcId],
-      actual: value,
-
-      // ✅ DEFAULT TO PASS IF NOT SELECTED
-      pass: prev[tcId]?.pass ?? true,
-      fail: prev[tcId]?.fail ?? false,
-    },
-  }));
-};
+    setTestResults((prev: any) => ({
+      ...prev,
+      [tcId]: {
+        ...prev[tcId],
+        actual: value,
+        pass: prev[tcId]?.pass ?? true,
+        fail: prev[tcId]?.fail ?? false,
+      },
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,60 +128,56 @@ export default function TestRun() {
                 <tr key={tc.uuid} className="border-b">
 
                   <td className="p-3">{tc.uuid.slice(0, 6)}</td>
-
                   <td className="p-3">{tc.title}</td>
-
                   <td className="p-3">{tc.expected_results}</td>
 
-                  {/* 🔥 UPDATED ACTUAL COLUMN */}
+                  {/* ACTUAL */}
                   <td className="p-3">
                     <div className="flex flex-col gap-2">
 
+                      {/* 🔥 DISABLE FOR REVIEWER */}
                       <Textarea
+                        disabled={!can(role, "testruns", "update")}
                         value={testResults[tc.uuid]?.actual || ""}
                         onChange={(e) =>
                           handleActualChange(tc.uuid, e.target.value)
                         }
                       />
 
-                      {/* DONE BUTTON */}
-                     <button
-  onClick={async () => {
-    const result = testResults[tc.uuid];
+                      {/* 🔥 DONE BUTTON PERMISSION */}
+                      {can(role, "testruns", "create") && (
+                        <button
+                          onClick={async () => {
+                            const result = testResults[tc.uuid];
 
-    console.log("RESULT:", result);
+                            if (!result?.actual) {
+                              alert("Enter actual result");
+                              return;
+                            }
 
-    // ✅ ONLY CHECK ACTUAL RESULT
-    if (!result?.actual) {
-      alert("Enter actual result");
-      return;
-    }
-
-    try {
-      const res = await createTestRun({
-        test_case: tc.uuid,
-        actual_results: result.actual,
-
-        // ✅ BOOLEAN → STATUS
-        status: result.fail ? "fail" : "pass",
-      });
-
-      console.log("SUCCESS:", res);
-
-    } catch (err) {
-      console.error("ERROR:", err);
-    }
-  }}
-  className="self-end bg-blue-600 text-white px-2 py-1 text-xs rounded hover:bg-blue-700"
->
-  Done
-</button>
+                            try {
+                              await createTestRun({
+                                test_case: tc.uuid,
+                                actual_results: result.actual,
+                                status: result.fail ? "fail" : "pass",
+                              });
+                            } catch (err) {
+                              console.error("ERROR:", err);
+                            }
+                          }}
+                          className="self-end bg-blue-600 text-white px-2 py-1 text-xs rounded hover:bg-blue-700"
+                        >
+                          Done
+                        </button>
+                      )}
 
                     </div>
                   </td>
 
+                  {/* 🔥 DISABLE CHECKBOXES FOR REVIEWER */}
                   <td className="text-center">
                     <Checkbox
+                      disabled={!can(role, "testruns", "update")}
                       checked={testResults[tc.uuid]?.pass || false}
                       onCheckedChange={(val) =>
                         handlePassChange(tc.uuid, val as boolean)
@@ -189,6 +187,7 @@ export default function TestRun() {
 
                   <td className="text-center">
                     <Checkbox
+                      disabled={!can(role, "testruns", "update")}
                       checked={testResults[tc.uuid]?.fail || false}
                       onCheckedChange={(val) =>
                         handleFailChange(tc, val as boolean)
@@ -205,7 +204,7 @@ export default function TestRun() {
 
       </div>
 
-      {/* 🔥 UPDATED BUG MODAL */}
+      {/* BUG MODAL (unchanged) */}
       <BugModal
         isOpen={bugModalOpen}
         onClose={() => setBugModalOpen(false)}
