@@ -1,11 +1,5 @@
 const BASE_URL = "http://127.0.0.1:8000/api";
 
-
-
-
-
-
-// 🔐 AUTH HEADERS (FIXED)
 export const getAuthHeaders = () => {
   const token = localStorage.getItem("access");
 
@@ -15,7 +9,6 @@ export const getAuthHeaders = () => {
   };
 };
 
-// 🔥 MAIN API FUNCTION
 const API = async (
   endpoint: string,
   options: RequestInit = {},
@@ -31,12 +24,18 @@ const API = async (
     },
   });
 
+  // 🔥 HANDLE UNAUTHORIZED (VERY IMPORTANT)
+  if (res.status === 401) {
+    localStorage.clear();
+    window.location.href = "/auth/login";
+    return;
+  }
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || "API request failed");
   }
 
-  // ✅ Handle DELETE (204 No Content)
   if (res.status === 204) {
     return null;
   }

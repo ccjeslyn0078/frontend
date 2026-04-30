@@ -1,54 +1,79 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import API from "../utils/api/fetchclient";
 
+type UserType = {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  organization?: string;
+};
+
 type AuthContextType = {
-  user: any;
+  user: UserType | null;
   token: string | null;
   login: (data: any) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  loading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: any) => {
   const [token, setToken] = useState<string | null>(
-    localStorage.getItem("token")
+    localStorage.getItem("access")
   );
 
-  const [user, setUser] = useState<any>(
-    localStorage.getItem("user")
-      ? JSON.parse(localStorage.getItem("user")!)
-      : null
-  );
+  const [user, setUser] = useState<UserType | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const isAuthenticated = !!token;
 
-  // ✅ LOGIN (FIXED)
-const login = async (data: any) => {
-  const res = await API(
-    "/users/login/",
-    {
-      method: "POST",
-      body: JSON.stringify(data),
-    },
-    false
-  );
+  // ✅ FETCH CURRENT USER (/me)
+  const fetchUser = async () => {
+    try {
+      const res = await API("/users/me/", { method: "GET" }, true);
+      setUser(res);
+    } catch (err) {
+      console.error("Failed to fetch user", err);
+      logout();
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const accessToken = res.tokens?.access || res.access;
+  // ✅ AUTO FETCH ON APP LOAD
+  useEffect(() => {
+    if (token) {
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, [token]);
 
-  // 🔥 FIXED KEY
-  localStorage.setItem("access", accessToken);
-  setToken(accessToken);
+  // ✅ LOGIN
+  const login = async (data: any) => {
+    const res = await API(
+      "/users/login/",
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      false
+    );
 
-  if (res.user) {
-    localStorage.setItem("user", JSON.stringify(res.user));
-    setUser(res.user);
-  }
-};
+    const accessToken = res.tokens?.access || res.access;
 
-  // ✅ REGISTER (FIXED)
+    localStorage.setItem("access", accessToken);
+    setToken(accessToken);
+
+    // 🔥 Immediately fetch fresh user (instead of trusting response)
+    await fetchUser();
+  };
+
+  // ✅ REGISTER
   const register = async (data: any) => {
     await API(
       "/users/register/",
@@ -56,13 +81,13 @@ const login = async (data: any) => {
         method: "POST",
         body: JSON.stringify(data),
       },
-      false // ❗ no auth header
+      false
     );
   };
 
   // ✅ LOGOUT
   const logout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem("access");
     localStorage.removeItem("user");
 
     setToken(null);
@@ -78,6 +103,7 @@ const login = async (data: any) => {
         register,
         logout,
         isAuthenticated,
+        loading,
       }}
     >
       {children}

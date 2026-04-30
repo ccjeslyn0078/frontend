@@ -11,11 +11,14 @@ import {
 
 import {
   getTestCases,
+  createTestCase,
   updateTestCase,
   deleteTestCase,
 } from "../../../../utils/api/testcase.api";
 
-import { getRole, can } from "@/utils/api/permissions";
+import { useAuth } from "@/context/AuthContext";
+import { can } from "@/utils/api/permissions";
+
 import * as XLSX from "xlsx";
 
 const priorityStyles: Record<string, string> = {
@@ -33,9 +36,22 @@ const statusStyles: Record<string, string> = {
 export default function TestCasesPage() {
   const { screenId } = useParams();
   const queryClient = useQueryClient();
-  const role = getRole();
+
+  // ✅ AUTH CONTEXT
+  const { user } = useAuth();
+  const role = user?.role || "";
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newTestCase, setNewTestCase] = useState({
+    title: "",
+    description: "",
+    expected_results: "",
+    priority: "medium",
+    status: "open",
+  });
+
   const [editingTestCase, setEditingTestCase] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -53,6 +69,12 @@ export default function TestCasesPage() {
     ? data
     : (data as any)?.results || [];
 
+  const createMutation = useMutation({
+    mutationFn: createTestCase,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["testcases", screenId] }),
+  });
+
   const updateMutation = useMutation({
     mutationFn: updateTestCase,
     onSuccess: () =>
@@ -69,10 +91,10 @@ export default function TestCasesPage() {
     tc.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // ✅ DOWNLOAD TEMPLATE
   const downloadTemplate = () => {
     const worksheet = XLSX.utils.json_to_sheet([
       {
-        ID: "",
         Title: "",
         Description: "",
         Expected: "",
@@ -86,6 +108,7 @@ export default function TestCasesPage() {
     XLSX.writeFile(workbook, "testcase_template.xlsx");
   };
 
+  // ✅ BULK IMPORT
   const handleFileUpload = (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -120,7 +143,7 @@ export default function TestCasesPage() {
 
         queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
         alert("Bulk import successful");
-      } catch (err) {
+      } catch {
         alert("Bulk import failed");
       }
     };
@@ -134,26 +157,31 @@ export default function TestCasesPage() {
     <div className="p-6 min-h-screen bg-gray-50">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Test Cases</h1>
+      <div className="flex justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Test Cases</h1>
 
         {can(role, "testcases", "create") && (
           <div className="flex gap-2">
+
             <button
               onClick={downloadTemplate}
-              className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm"
+              className="px-4 py-2 bg-gray-100 rounded"
             >
               Download Template
             </button>
 
-            <label className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm cursor-pointer">
+            <label className="px-4 py-2 bg-green-600 text-white rounded cursor-pointer">
               Import
-              <input
-                type="file"
-                hidden
-                onChange={handleFileUpload}
-              />
+              <input type="file" hidden onChange={handleFileUpload} />
             </label>
+
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              + Create
+            </button>
+
           </div>
         )}
       </div>
@@ -163,57 +191,45 @@ export default function TestCasesPage() {
         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
         <input
           placeholder="Search..."
-          className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-9 pr-4 py-2 border rounded"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-
-          <thead className="bg-gray-50 border-b">
+      <div className="bg-white rounded border shadow-sm">
+        <table className="w-full">
+          <thead>
             <tr>
-              <th className="px-4 py-3 text-left text-xs text-gray-500">ID</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500">Title</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500">Description</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500">Expected</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500">Priority</th>
-              <th className="px-4 py-3 text-left text-xs text-gray-500">Status</th>
-
-              {showActions && (
-                <th className="px-4 py-3 text-right text-xs text-gray-500">Actions</th>
-              )}
+              <th>ID</th>
+              <th>Title</th>
+              <th>Priority</th>
+              <th>Status</th>
+              {showActions && <th>Actions</th>}
             </tr>
           </thead>
 
-          <tbody className="divide-y">
+          <tbody>
             {filtered.map((tc: any) => (
-              <tr key={tc.uuid} className="hover:bg-gray-50">
+              <tr key={tc.uuid}>
+                <td>{tc.uuid.slice(0, 6)}</td>
+                <td>{tc.title}</td>
 
-                <td className="px-4 py-3 font-mono text-gray-600">
-                  {tc.uuid.slice(0, 6)}
-                </td>
-
-                <td className="px-4 py-3 font-medium">{tc.title}</td>
-                <td className="px-4 py-3 text-gray-600">{tc.description}</td>
-                <td className="px-4 py-3 text-gray-600">{tc.expected_results}</td>
-
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs ${priorityStyles[tc.priority]}`}>
+                <td>
+                  <span className={priorityStyles[tc.priority]}>
                     {tc.priority}
                   </span>
                 </td>
 
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs ${statusStyles[tc.status]}`}>
+                <td>
+                  <span className={statusStyles[tc.status]}>
                     {tc.status}
                   </span>
                 </td>
 
                 {showActions && (
-                  <td className="px-4 py-3 flex justify-end gap-2">
+                  <td>
 
                     {canEdit && (
                       <button
@@ -221,78 +237,59 @@ export default function TestCasesPage() {
                           setEditingTestCase(tc);
                           setIsEditModalOpen(true);
                         }}
-                        className="p-2 hover:bg-blue-50 rounded"
                       >
-                        <Pencil className="w-4 h-4 text-blue-600" />
+                        <Pencil />
                       </button>
                     )}
 
                     {canDelete && (
-                      <button
-                        onClick={() => {
-                          if (confirm("Are you sure?")) {
-                            deleteMutation.mutate(tc.uuid);
-                          }
-                        }}
-                        className="p-2 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
+                      <button onClick={() => deleteMutation.mutate(tc.uuid)}>
+                        <Trash2 />
                       </button>
                     )}
 
                   </td>
                 )}
-
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* EDIT MODAL */}
+      {/* CREATE MODAL */}
       <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        title="Edit Test Case"
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Create Test Case"
       >
-        {editingTestCase && (
-          <>
-            <input
-              className="border p-2 w-full mb-2"
-              value={editingTestCase.title}
-              onChange={(e) =>
-                setEditingTestCase({
-                  ...editingTestCase,
-                  title: e.target.value,
-                })
-              }
-            />
+        <input
+          placeholder="Title"
+          className="border p-2 w-full mb-2"
+          onChange={(e) =>
+            setNewTestCase({ ...newTestCase, title: e.target.value })
+          }
+        />
 
-            <textarea
-              className="border p-2 w-full mb-2"
-              value={editingTestCase.description}
-              onChange={(e) =>
-                setEditingTestCase({
-                  ...editingTestCase,
-                  description: e.target.value,
-                })
-              }
-            />
+        <textarea
+          placeholder="Description"
+          className="border p-2 w-full mb-2"
+          onChange={(e) =>
+            setNewTestCase({ ...newTestCase, description: e.target.value })
+          }
+        />
 
-            <button
-              onClick={() => {
-                updateMutation.mutate({
-                  id: editingTestCase.uuid,
-                  data: editingTestCase,
-                });
-                setIsEditModalOpen(false);
-              }}
-              className="bg-blue-600 text-white px-4 py-2 mt-3 rounded"
-            >
-              Update
-            </button>
-          </>
-        )}
+        <button
+          onClick={() => {
+            createMutation.mutate({
+              ...newTestCase,
+              screen: screenId,
+            });
+            setIsCreateModalOpen(false);
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Create
+        </button>
       </Modal>
 
     </div>

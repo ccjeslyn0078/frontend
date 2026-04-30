@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -7,6 +7,7 @@ import {
   Settings as SettingsIcon,
   LogOut
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 interface SidebarProps {
   isMobileMenuOpen: boolean;
@@ -16,11 +17,22 @@ interface SidebarProps {
 export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: SidebarProps) {
   const location = useLocation();
 
+  const { user, logout, loading } = useAuth();
+
   const isActive = (path: string) => {
     if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
-  const navigate=useNavigate();
+
+  // ⛔ Prevent rendering before user loads
+  if (loading) {
+    return (
+      <aside className="w-64 p-4">
+        <p>Loading...</p>
+      </aside>
+    );
+  }
+
   return (
     <aside
       className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 ease-in-out ${
@@ -83,13 +95,34 @@ export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: Sideb
         </Link>
       </nav>
 
+      {/* ✅ User Info Card (REAL DATA FROM /me) */}
+      <div className="px-4 pb-2">
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <p className="text-xs text-gray-500">Organization</p>
+          <p className="text-sm font-medium text-gray-800 mb-2">
+            {user?.organization || "N/A"}
+          </p>
+
+          <p className="text-xs text-gray-500">Username</p>
+          <p className="text-sm text-gray-800 mb-2">
+            {user?.username || "N/A"}
+          </p>
+
+          <p className="text-xs text-gray-500">Email</p>
+          <p className="text-sm text-gray-800 mb-2">
+            {user?.email || "N/A"}
+          </p>
+
+          <p className="text-xs text-gray-500">Role</p>
+          <p className="text-sm text-gray-800">
+            {user?.role || "N/A"}
+          </p>
+        </div>
+      </div>
+
       <div className="p-4 border-t border-gray-200">
         <button
-          onClick={() => {
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            navigate("/auth/login");
-          }}
+          onClick={logout}
           className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50 w-full"
         >
           <LogOut className="w-5 h-5" />
