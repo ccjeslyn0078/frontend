@@ -24,13 +24,18 @@ import {
 } from "@/utils/api/bug.api";
 
 import { Modal } from "@/components/ui/Modal";
-import { getRole, can } from "@/utils/api/permissions";
+import { can } from "@/utils/api/permissions";
+
+// ✅ NEW: import auth context
+import { useAuth } from "@/context/AuthContext";
 
 export default function BugsPage() {
   const { projectId, moduleId, screenId } = useParams();
   const queryClient = useQueryClient();
 
-  const role = getRole(); // ✅ ONLY ONCE
+  // ✅ GET ROLE FROM CONTEXT (ONLY CHANGE)
+  const { user } = useAuth();
+  const role = user?.role || "";
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -236,66 +241,88 @@ export default function BugsPage() {
 
           </table>
         </div>
-
         {/* 🔹 CREATE MODAL */}
-        <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create Bug">
+<Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Create Bug">
 
-          <textarea
-            placeholder="Description"
-            className="border p-2 w-full mb-2"
-            onChange={(e) =>
-              setNewBug({ ...newBug, description: e.target.value })
-            }
-          />
+  <textarea
+    placeholder="Description"
+    className="border p-2 w-full mb-2"
+    onChange={(e) =>
+      setNewBug({ ...newBug, description: e.target.value })
+    }
+  />
 
-          <textarea
-            placeholder="Steps to Reproduce"
-            className="border p-2 w-full mb-2"
-            onChange={(e) =>
-              setNewBug({
-                ...newBug,
-                steps_to_reproduce: e.target.value,
-              })
-            }
-          />
+  <textarea
+    placeholder="Steps to Reproduce"
+    className="border p-2 w-full mb-2"
+    onChange={(e) =>
+      setNewBug({
+        ...newBug,
+        steps_to_reproduce: e.target.value,
+      })
+    }
+  />
 
-          <input
-            placeholder="Expected Results"
-            className="border p-2 w-full mb-2"
-            onChange={(e) =>
-              setNewBug({
-                ...newBug,
-                expected_results: e.target.value,
-              })
-            }
-          />
+  <div className="mb-2">
+    <label className="block text-sm text-gray-600 mb-1">
+      Severity
+    </label>
 
-          <input
-            placeholder="Actual Results"
-            className="border p-2 w-full"
-            onChange={(e) =>
-              setNewBug({
-                ...newBug,
-                actual_results: e.target.value,
-              })
-            }
-          />
+    <select
+      value={newBug.severity}
+      className="w-full border p-2 rounded"
+      onChange={(e) =>
+        setNewBug({ ...newBug, severity: e.target.value })
+      }
+    >
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="critical">Critical</option>
+    </select>
+  </div>
 
-          <button
-            onClick={() => {
-              createMutation.mutate({
-                ...newBug,
-                project: projectId,
-                module: moduleId,
-                screen: screenId,
-              });
-              setIsCreateOpen(false);
-            }}
-            className="bg-red-600 text-white px-4 py-2 mt-3 rounded"
-          >
-            Create
-          </button>
-        </Modal>
+  <input
+    placeholder="Expected Results"
+    className="border p-2 w-full mb-2"
+    onChange={(e) =>
+      setNewBug({
+        ...newBug,
+        expected_results: e.target.value,
+      })
+    }
+  />
+
+  <input
+    placeholder="Actual Results"
+    className="border p-2 w-full"
+    onChange={(e) =>
+      setNewBug({
+        ...newBug,
+        actual_results: e.target.value,
+      })
+    }
+  />
+
+  <button
+    onClick={() => {
+      console.log("Creating Bug:", newBug); // 🔥 debug
+
+      createMutation.mutate({
+        ...newBug,
+        project: projectId,
+        module: moduleId,
+        screen: screenId,
+      });
+
+      setIsCreateOpen(false);
+    }}
+    className="bg-red-600 text-white px-4 py-2 mt-3 rounded"
+  >
+    Create
+  </button>
+
+</Modal>
 
         {/* 🔹 EDIT MODAL */}
         <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Bug">
