@@ -26,13 +26,17 @@ import {
   deleteScreen,
 } from "@/utils/api/screens.api";
 
-import { getRole, can } from "@/utils/api/permissions"; // ✅ added
+// ✅ UPDATED IMPORT
+import { useAuth } from "@/context/AuthContext";
+import { can } from "@/utils/api/permissions";
 
 export function Screens() {
   const { projectId, moduleId } = useParams();
   const queryClient = useQueryClient();
 
-  const role = getRole(); // ✅ ONLY ONCE
+  // ✅ GET ROLE FROM AUTH CONTEXT
+  const { user } = useAuth();
+  const role = user?.role || "";
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingScreen, setEditingScreen] = useState<any>(null);
@@ -194,7 +198,6 @@ export function Screens() {
             {screens.map((screen: any) => (
               <tr key={screen.uuid}>
 
-                {/* 🔥 VIEW CLICK (allowed for read roles) */}
                 <td className="px-6 py-4">
                   <button
                     onClick={() =>
@@ -210,7 +213,6 @@ export function Screens() {
                   {screen.description || "-"}
                 </td>
 
-                {/* 🔥 ACTIONS */}
                 <td className="px-6 py-4 text-right">
 
                   {can(role, "screens", "update") && (

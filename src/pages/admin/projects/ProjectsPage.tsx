@@ -20,13 +20,17 @@ import {
   deleteProject,
 } from "@/utils/api/project.api";
 
-import { getRole, can } from "@/utils/api/permissions"; // ✅ added
+// ✅ UPDATED IMPORT
+import { useAuth } from "@/context/AuthContext";
+import { can } from "@/utils/api/permissions";
 
 export function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const role = getRole(); // ✅ ONLY ONCE
+  // ✅ GET ROLE FROM AUTH CONTEXT
+  const { user } = useAuth();
+  const role = user?.role || "";
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newProject, setNewProject] = useState({
