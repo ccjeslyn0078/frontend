@@ -50,6 +50,17 @@ export default function BugsPage() {
 
   const [editingBug, setEditingBug] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [steps, setSteps] = useState([""]);
+
+  const handleStepChange = (index: number, value: string) => {
+  const updated = [...steps];
+  updated[index] = value;
+  setSteps(updated);
+};
+
+const addStep = () => {
+  setSteps([...steps, ""]);
+};
 
   const { data, isLoading } = useQuery({
     queryKey: ["bugs", screenId],
@@ -187,7 +198,17 @@ export default function BugsPage() {
 
                   <td className="px-4 py-3 max-w-xs">
                     <p className="text-sm text-gray-600 line-clamp-2">
-                      {bug.steps_to_reproduce || "N/A"}
+                      {bug.steps_to_reproduce ? (
+  <div className="space-y-1">
+    {bug.steps_to_reproduce.split("\n").map((step: string, i: number) => (
+      <div key={i} className="text-xs">
+        <span className="font-medium">Step {i + 1}:</span> {step}
+      </div>
+    ))}
+  </div>
+) : (
+  <span className="text-gray-400 text-xs">No steps</span>
+)}
                     </p>
                   </td>
 
@@ -218,6 +239,11 @@ export default function BugsPage() {
                       <button
                         onClick={() => {
                           setEditingBug(bug);
+                          if (bug.steps_to_reproduce) {
+  setSteps(bug.steps_to_reproduce.split("\n"));
+} else {
+  setSteps([""]);
+}
                           setIsEditOpen(true);
                         }}
                       >
@@ -252,16 +278,24 @@ export default function BugsPage() {
     }
   />
 
-  <textarea
-    placeholder="Steps to Reproduce"
-    className="border p-2 w-full mb-2"
-    onChange={(e) =>
-      setNewBug({
-        ...newBug,
-        steps_to_reproduce: e.target.value,
-      })
-    }
-  />
+  <div className="mb-4">
+  <label>Steps:</label>
+
+  {steps.map((step, index) => (
+    <div key={index} style={{ display: "flex", gap: "10px" }}>
+      <span>Step {index + 1}</span>
+
+      <input
+        value={step}
+        onChange={(e) => handleStepChange(index, e.target.value)}
+      />
+
+      {index === steps.length - 1 && (
+        <button onClick={addStep}>+</button>
+      )}
+    </div>
+  ))}
+</div>
 
   <div className="mb-2">
     <label className="block text-sm text-gray-600 mb-1">
@@ -310,6 +344,10 @@ export default function BugsPage() {
 
       createMutation.mutate({
         ...newBug,
+       steps_to_reproduce: steps
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0)
+  .join("\n"),
         project: projectId,
         module: moduleId,
         screen: screenId,
@@ -325,48 +363,126 @@ export default function BugsPage() {
 </Modal>
 
         {/* 🔹 EDIT MODAL */}
-        <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Bug">
+        <Modal
+  isOpen={isEditOpen}
+  onClose={() => setIsEditOpen(false)}
+  title="Edit Bug"
+>
+  {editingBug && (
+    <>
+      {/* DESCRIPTION */}
+      <textarea
+        className="border p-2 w-full mb-2"
+        value={editingBug.description}
+        onChange={(e) =>
+          setEditingBug({
+            ...editingBug,
+            description: e.target.value,
+          })
+        }
+      />
 
-          {editingBug && (
-            <>
-              <textarea
-                value={editingBug.description}
-                className="border p-2 w-full mb-2"
-                onChange={(e) =>
-                  setEditingBug({
-                    ...editingBug,
-                    description: e.target.value,
-                  })
-                }
-              />
+      {/* STEPS */}
+      <div className="mb-4">
+        <label>Steps:</label>
 
-              <textarea
-                value={editingBug.steps_to_reproduce}
-                className="border p-2 w-full mb-2"
-                onChange={(e) =>
-                  setEditingBug({
-                    ...editingBug,
-                    steps_to_reproduce: e.target.value,
-                  })
-                }
-              />
+        {steps.map((step, index) => (
+          <div key={index} style={{ display: "flex", gap: "10px" }}>
+            <span>Step {index + 1}</span>
 
-              <button
-                onClick={() => {
-                  updateMutation.mutate({
-                    id: editingBug.uuid,
-                    data: editingBug,
-                  });
-                  setIsEditOpen(false);
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                Update
-              </button>
-            </>
-          )}
-        </Modal>
+            <input
+              value={step}
+              onChange={(e) =>
+                handleStepChange(index, e.target.value)
+              }
+            />
 
+            {index === steps.length - 1 && (
+              <button onClick={addStep}>+</button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* EXPECTED */}
+      <textarea
+        placeholder="Expected Results"
+        className="border p-2 w-full mb-2"
+        value={editingBug.expected_results}
+        onChange={(e) =>
+          setEditingBug({
+            ...editingBug,
+            expected_results: e.target.value,
+          })
+        }
+      />
+
+      {/* ACTUAL */}
+      <textarea
+        placeholder="Actual Results"
+        className="border p-2 w-full mb-2"
+        value={editingBug.actual_results}
+        onChange={(e) =>
+          setEditingBug({
+            ...editingBug,
+            actual_results: e.target.value,
+          })
+        }
+      />
+
+      {/* SEVERITY */}
+      <select
+        className="border p-2 w-full mb-2"
+        value={editingBug.severity}
+        onChange={(e) =>
+          setEditingBug({
+            ...editingBug,
+            severity: e.target.value,
+          })
+        }
+      >
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+
+      {/* STATUS */}
+      <select
+        className="border p-2 w-full mb-2"
+        value={editingBug.status}
+        onChange={(e) =>
+          setEditingBug({
+            ...editingBug,
+            status: e.target.value,
+          })
+        }
+      >
+        <option value="open">Open</option>
+        <option value="in_progress">In Progress</option>
+        <option value="closed">Closed</option>
+      </select>
+
+      {/* UPDATE BUTTON */}
+      <button
+        onClick={() => {
+          updateMutation.mutate({
+            id: editingBug.uuid,
+            data: {
+              ...editingBug,
+              steps_to_reproduce: steps
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0)
+  .join("\n"), // 🔥 IMPORTANT
+            },
+          });
+        }}
+        className="bg-blue-600 text-white px-4 py-2 rounded"
+      >
+        Update
+      </button>
+    </>
+  )}
+</Modal>
       </div>
     </div>
   );

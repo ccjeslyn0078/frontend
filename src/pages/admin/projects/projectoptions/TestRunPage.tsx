@@ -118,6 +118,7 @@ export default function TestRun() {
               <tr>
                 <th className="p-3 text-left">TC ID</th>
                 <th className="p-3 text-left">Title</th>
+                <th className="p-3 text-left">Steps</th>
                 <th className="p-3 text-left">Expected</th>
                 <th className="p-3 text-left">Actual</th>
                 <th className="p-3 text-center">Pass</th>
@@ -131,6 +132,21 @@ export default function TestRun() {
 
                   <td className="p-3">{tc.uuid.slice(0, 6)}</td>
                   <td className="p-3">{tc.title}</td>
+                  <td className="p-3">
+  {tc.steps && typeof tc.steps === "object" ? (
+    <div className="space-y-1">
+      {Object.entries(tc.steps).map(([key, value]: any) => (
+        <div key={key} className="text-xs">
+          <span className="font-medium">{key}:</span> {value}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <span className="text-gray-400 text-xs">No steps</span>
+  )}
+</td>
+
+
                   <td className="p-3">{tc.expected_results}</td>
 
                   {/* ACTUAL */}

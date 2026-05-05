@@ -35,7 +35,17 @@ export const AuthProvider = ({ children }: any) => {
   const fetchUser = async () => {
     try {
       const res = await API("/users/me/", { method: "GET" }, true);
+
       setUser(res);
+
+      // 🔥🔥 CRITICAL FIX — STORE ROLE IN LOCALSTORAGE
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          role: res?.role?.toLowerCase() || "admin", // fallback safety
+        })
+      );
+
     } catch (err) {
       console.error("Failed to fetch user", err);
       logout();
@@ -69,7 +79,7 @@ export const AuthProvider = ({ children }: any) => {
     localStorage.setItem("access", accessToken);
     setToken(accessToken);
 
-    // 🔥 Immediately fetch fresh user (instead of trusting response)
+    // 🔥 Fetch user → also stores role now
     await fetchUser();
   };
 

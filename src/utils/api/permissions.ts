@@ -1,9 +1,29 @@
 export const getRole = () => {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  return user?.role;
+  try {
+    const userStr = localStorage.getItem("user");
+
+    if (!userStr) {
+      console.warn("No user found in localStorage");
+      return null;
+    }
+
+    const user = JSON.parse(userStr);
+
+    console.log("USER:", user); // debug
+    console.log("ROLE:", user?.role); // debug
+
+    // 🔥 normalize role (VERY IMPORTANT)
+    return user?.role ? user.role.toLowerCase() : null;
+
+  } catch (error) {
+    console.error("Error parsing user:", error);
+    return null;
+  }
 };
 
 export const can = (role: string, resource: string, action: string) => {
+  if (!role) return false;
+
   const ROLE_ROUTES: any = {
     admin: {
       projects: ["create", "read", "update", "delete"],
@@ -39,5 +59,5 @@ export const can = (role: string, resource: string, action: string) => {
     },
   };
 
-  return ROLE_ROUTES[role]?.[resource]?.includes(action);
+  return ROLE_ROUTES[role]?.[resource]?.includes(action) || false;
 };
