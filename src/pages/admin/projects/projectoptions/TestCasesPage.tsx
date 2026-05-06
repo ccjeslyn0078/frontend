@@ -46,6 +46,9 @@ export default function TestCasesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTestCase, setNewTestCase] = useState({
     title: "",
@@ -132,9 +135,11 @@ const addStep = () => {
       {
         Title: "",
         Description: "",
+        Steps: "",
         Expected: "",
-        Priority: "medium",
-        Status: "open",
+        Priority: "",
+        Status: "",
+        Type: "",
       },
     ]);
     const workbook = XLSX.utils.book_new();
@@ -162,22 +167,45 @@ const addStep = () => {
         const formattedData = jsonData.map((row) => ({
           title: row["Title"],
           description: row["Description"],
+    steps: row["Steps"]
+  ? String(row["Steps"])
+      .split(/\n|\r|\d+\./)   // 🔥 handles 1., 2., new lines
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+  : [],
           expected_results: row["Expected"],
           priority: row["Priority"] || "medium",
           status: row["Status"] || "open",
+          type_of_testcase:
+  row["Type"] ||
+  row["type"] ||
+  row["TYPE"] ||
+  "functional",
           screen: screenId,
         }));
 
-        await fetch("http://127.0.0.1:8000/api/testcases/bulk-import/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access")}`,
-          },
-          body: JSON.stringify(formattedData),
-        });
+        const res = await fetch("http://127.0.0.1:8000/api/testcases/bulk-import/", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${localStorage.getItem("access")}`,
+  },
+  body: JSON.stringify(formattedData),
+});
 
-        alert("Bulk import started (Django Q)");
+if (!res.ok) {
+  throw new Error("Bulk import failed");
+}
+
+alert("Bulk import started successfully");
+
+// ✅ close modal
+setIsBulkModalOpen(false);
+
+// ✅ refresh table
+queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
+
+        
       } catch {
         alert("Import failed");
       } finally {
@@ -192,45 +220,31 @@ const addStep = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
 
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-semibold">Test Cases</h1>
 
-        <div className="flex gap-2">
+  <h1 className="text-xl font-semibold">Test Cases</h1>
 
-          {/* ✅ FIXED DOWNLOAD */}
-          <button
-            onClick={downloadTemplate}
-            className="px-4 py-2 bg-gray-100 rounded-lg text-sm"
-          >
-            Download Template
-          </button>
+  <div className="flex gap-2 items-center">
+    
+    <button
+      onClick={() => setIsBulkModalOpen(true)}
+      className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm"
+    >
+      Bulk Import
+    </button>
 
-          {/* ✅ FIXED IMPORT */}
-          <label
-            className={`px-4 py-2 text-white rounded-lg text-sm ${
-              canCreate ? "bg-green-600 cursor-pointer" : "bg-gray-300"
-            }`}
-          >
-            {isUploading ? "Importing..." : "Import"}
-            <input
-              type="file"
-              hidden
-              onChange={handleFileUpload}
-              disabled={!canCreate}
-            />
-          </label>
+    <button
+      disabled={!canCreate}
+      onClick={() => setIsCreateModalOpen(true)}
+      className={`px-4 py-2 rounded-lg text-sm text-white ${
+        canCreate ? "bg-blue-600" : "bg-gray-300"
+      }`}
+    >
+      + Create
+    </button>
 
-          <button
-            disabled={!canCreate}
-            onClick={() => setIsCreateModalOpen(true)}
-            className={`px-4 py-2 rounded-lg text-sm text-white ${
-              canCreate ? "bg-blue-600" : "bg-gray-300"
-            }`}
-          >
-            + Create
-          </button>
-        </div>
-      </div>
+  </div>
 
+</div>
 
       {/* SEARCH */}
       <div className="relative mb-4 max-w-sm">
@@ -589,6 +603,9 @@ const addStep = () => {
         <option value="smoke">Smoke</option>
       </select>
 
+
+     
+
       {/* UPDATE BUTTON */}
       <button
         disabled={updateMutation.isPending}
@@ -596,18 +613,19 @@ const addStep = () => {
           if (!editingTestCase) return;
 
           updateMutation.mutate({
-            id: editingTestCase.uuid,
-            data: {
-              title: editingTestCase.title,
-              description: editingTestCase.description,
-              steps: steps.filter((s) => s && s.trim() !== ""), // ✅ FIX
-              expected_results: editingTestCase.expected_results,
-              priority: editingTestCase.priority,
-              status: editingTestCase.status,
-              type_of_testcase: editingTestCase.type_of_testcase,
-              screen: screenId,
-            },
-          });
+  id: editingTestCase.uuid,
+  data: {
+    ...editingTestCase,  // ✅ ensures all required fields are sent
+
+    // 🔥 clean steps properly
+    steps: (steps || [])
+      .map((s) => (s || "").trim())
+      .filter((s) => s.length > 0),
+
+    // ✅ override screen explicitly (important)
+    screen: screenId,
+  },
+});
         }}
         className="bg-blue-600 text-white px-4 py-2 rounded"
       >
@@ -618,8 +636,60 @@ const addStep = () => {
 </Modal>
 
 
+
+<Modal
+  isOpen={isBulkModalOpen}
+  onClose={() => setIsBulkModalOpen(false)}
+  title="Bulk Import Test Cases"
+>
+  <div
+    className={`border-2 border-dashed rounded-lg p-6 text-center ${
+      dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"
+    }`}
+    onDragOver={(e) => {
+      e.preventDefault();
+      setDragActive(true);
+    }}
+    onDragLeave={() => setDragActive(false)}
+    onDrop={(e) => {
+      e.preventDefault();
+      setDragActive(false);
+
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        handleFileUpload({ target: { files: [file] } });
+      }
+    }}
+  >
+    <p className="text-gray-600 mb-2">Drag & Drop file here</p>
+
+    <p className="text-sm text-gray-400 mb-4">or</p>
+
+    {/* UPLOAD BUTTON */}
+    <label className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer">
+      Upload File
+      <input
+        type="file"
+        hidden
+        onChange={handleFileUpload}
+      />
+    </label>
+
+    {/* DOWNLOAD TEMPLATE */}
+    <div className="mt-4">
+      <button
+        onClick={downloadTemplate}
+        className="text-blue-600 underline text-sm"
+      >
+        Download Template
+      </button>
+    </div>
+  </div>
+</Modal>
+
+
 </div>
-  );
+);
 }
 
 
