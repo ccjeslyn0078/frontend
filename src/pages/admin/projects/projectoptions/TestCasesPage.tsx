@@ -301,7 +301,20 @@ queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
 
   {canCreate && (
     <button
-      onClick={() => setIsCreateModalOpen(true)}
+      onClick={() => {
+  setNewTestCase({
+    title: "",
+    description: "",
+    expected_results: "",
+    priority: "medium",
+    type_of_testcase: "functional",
+    assigned_to: "",
+  });
+
+  setSteps([""]);
+
+  setIsCreateModalOpen(true);
+}}
       className="px-4 py-2 rounded-lg text-sm text-white bg-blue-600 cursor-pointer"
     >
       + Create
@@ -350,11 +363,14 @@ queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
 <td className="px-4 py-3">
   {tc.steps && typeof tc.steps === "object" && Object.keys(tc.steps).length > 0 ? (
     <div className="space-y-1">
-      {Object.entries(tc.steps).map(([key, value]: any) => (
-        <div key={key} className="text-xs">
-          <span className="font-medium">{key}:</span> {value}
-        </div>
-      ))}
+      {Object.entries(tc.steps).map(([key, value]: any, index) => (
+  <div key={key} className="text-xs">
+    <span className="font-medium">
+      Step {index + 1}:
+    </span>{" "}
+    {value}
+  </div>
+))}
     </div>
   ) : (
     <span className="text-gray-400 text-xs">No steps</span>
@@ -414,11 +430,39 @@ queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
           </tbody>
         </table>
       </div>
-      /
-    /* CREATE MODEL*/ 
+      
+    
 <Modal
   isOpen={isCreateModalOpen}
-  onClose={() => setIsCreateModalOpen(false)}
+  onClose={() => {
+    const hasData =
+      newTestCase.title ||
+      newTestCase.description ||
+      newTestCase.expected_results ||
+      steps.some((s) => s.trim() !== "");
+
+    if (hasData) {
+      const confirmClose = window.confirm(
+        "Are you sure you want to close? Unsaved data will be lost."
+      );
+
+      if (!confirmClose) return;
+    }
+
+    setIsCreateModalOpen(false);
+
+    // RESET FORM
+    setNewTestCase({
+      title: "",
+      description: "",
+      expected_results: "",
+      priority: "medium",
+      type_of_testcase: "functional",
+      assigned_to: "",
+    });
+
+    setSteps([""]);
+  }}
   title="Create Test Case"
 >
 
@@ -704,8 +748,12 @@ queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
  
     // 🔥 clean steps properly
     steps: (steps || [])
-      .map((s) => (s || "").trim())
-      .filter((s) => s.length > 0),
+  .map((s) => (s || "").trim())
+  .filter((s) => s.length > 0)
+  .reduce((acc: any, step, index) => {
+    acc[`Step ${index + 1}`] = step;
+    return acc;
+  }, {}),
  
     // ✅ override screen explicitly (important)
     screen: screenId,
