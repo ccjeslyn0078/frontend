@@ -50,9 +50,15 @@ export function Screens() {
     queryFn: () => getScreens(moduleId!),
   });
 
-  const screens = Array.isArray(data)
+  const screens = (
+  Array.isArray(data)
     ? data
-    : data?.results || [];
+    : data?.results || []
+).sort(
+  (a: any, b: any) =>
+    new Date(a.created_at || 0).getTime() -
+    new Date(b.created_at || 0).getTime()
+);
 
   const handleEdit = (screen: any) => {
     setEditingScreen(screen);
@@ -82,41 +88,59 @@ export function Screens() {
   );
 
   const createMutation = useMutation({
-    mutationFn: createScreen,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["screens", moduleId],
-      });
-    },
-  });
+  mutationFn: createScreen,
+
+  onSuccess: async () => {
+
+    await queryClient.invalidateQueries({
+      queryKey: ["screens", moduleId],
+    });
+
+    handleCloseModal();
+  },
+});
 
   const updateMutation = useMutation({
-    mutationFn: updateScreen,
-    onSuccess: () => {
-      refetch();
-    },
-  });
+  mutationFn: updateScreen,
 
+  onSuccess: async () => {
+
+    await queryClient.invalidateQueries({
+      queryKey: ["screens", moduleId],
+    });
+
+    handleCloseModal();
+  },
+});
   const deleteMutation = useMutation({
-    mutationFn: deleteScreen,
-    onSuccess: (_, deletedId) => {
-      queryClient.setQueryData(
-        ["screens", moduleId],
-        (old: any) => {
-          if (!old) return old;
+  mutationFn: deleteScreen,
 
-          const filtered = (Array.isArray(old)
+  onSuccess: async (_, deletedId) => {
+
+    await queryClient.setQueryData(
+      ["screens", moduleId],
+      (old: any) => {
+
+        if (!old) return old;
+
+        const filtered = (
+          Array.isArray(old)
             ? old
             : old.results
-          ).filter((scr: any) => scr.uuid !== deletedId);
+        ).filter(
+          (scr: any) => scr.uuid !== deletedId
+        );
 
-          return Array.isArray(old)
-            ? filtered
-            : { ...old, results: filtered };
-        }
-      );
-    },
-  });
+        return Array.isArray(old)
+          ? filtered
+          : { ...old, results: filtered };
+      }
+    );
+
+    setIsDeleteModalOpen(false);
+    setScreenToDelete(null);
+  },
+});
 
   if (isLoading) {
     return <div className="p-6">Loading screens...</div>;
@@ -131,7 +155,18 @@ export function Screens() {
   }
 
   return (
-    <div className="p-6">
+  <div className="p-6">
+
+    {/* GLOBAL LOADER */}
+    {(createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending) && (
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] flex items-center justify-center">
+
+        <div className="w-16 h-16 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+
+      </div>
+    )}
       {/* BREADCRUMB */}
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
@@ -169,7 +204,7 @@ export function Screens() {
         {can(role, "screens", "create") && (
           <button
             onClick={handleAdd}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-5 h-5" />
             Create Screen
@@ -203,7 +238,7 @@ export function Screens() {
                     onClick={() =>
                       handleScreenClick(screen.uuid)
                     }
-                    className="text-blue-600"
+                    className="text-blue-600 cursor-pointer"
                   >
                     {screen.name}
                   </button>
@@ -215,25 +250,26 @@ export function Screens() {
 
                 <td className="px-6 py-4 text-right">
 
-                  {can(role, "screens", "update") && (
-                    <button
-                      onClick={() => handleEdit(screen)}
-                      className="mr-2"
-                    >
-                      <Pencil />
-                    </button>
-                  )}
+{can(role, "screens", "update") && (
+  <button
+    onClick={() => handleEdit(screen)}
+    className="mr-2 cursor-pointer"
+  >
+    <Pencil />
+  </button>
+)}
 
-                  {can(role, "screens", "delete") && (
-                    <button
-                      onClick={() => {
-                        setScreenToDelete(screen);
-                        setIsDeleteModalOpen(true);
-                      }}
-                    >
-                      <Trash2 />
-                    </button>
-                  )}
+{can(role, "screens", "delete") && (
+  <button
+    className="cursor-pointer"
+    onClick={() => {
+      setScreenToDelete(screen);
+      setIsDeleteModalOpen(true);
+    }}
+  >
+    <Trash2 />
+  </button>
+)}
 
                 </td>
               </tr>
@@ -285,16 +321,20 @@ export function Screens() {
               </button>
 
               <button
-                onClick={() => {
-                  deleteMutation.mutate(
-                    screenToDelete.uuid
-                  );
-                  setIsDeleteModalOpen(false);
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded"
-              >
-                Delete
-              </button>
+  disabled={deleteMutation.isPending}
+  onClick={() => {
+
+    if (!screenToDelete?.uuid) return;
+
+    deleteMutation.mutate(
+      screenToDelete.uuid
+    );
+
+  }}
+  className="px-4 py-2 bg-red-600 text-white rounded disabled:opacity-50"
+>
+  {deleteMutation.isPending ? "Deleting..." : "Delete"}
+</button>
             </div>
           </div>
         </div>

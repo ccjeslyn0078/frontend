@@ -49,45 +49,80 @@ export function ProjectsPage() {
     queryFn: getProjects,
   });
 
-  const projects = Array.isArray(data)
+  const projects = (
+  Array.isArray(data)
     ? data
-    : data?.results || [];
+    : data?.results || []
+).sort(
+  (a: any, b: any) =>
+    new Date(a.created_at || 0).getTime() -
+    new Date(b.created_at || 0).getTime()
+);
 
-  // CREATE
-  const createMutation = useMutation({
-    mutationFn: createProject,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    },
-  });
+// CREATE
+const createMutation = useMutation({
+  mutationFn: createProject,
 
-  // UPDATE
-  const updateMutation = useMutation({
-    mutationFn: updateProject,
-    onSuccess: () => {
-      refetch();
-    },
-  });
+  onSuccess: async () => {
 
-  // DELETE
-  const deleteMutation = useMutation({
-    mutationFn: deleteProject,
-    onSuccess: (_, variables) => {
-      const deletedId = variables;
+    await queryClient.invalidateQueries({
+      queryKey: ["projects"],
+    });
 
-      queryClient.setQueryData(["projects"], (old: any) => {
+    setIsCreateModalOpen(false);
+
+    setNewProject({
+      title: "",
+      description: "",
+    });
+  },
+});
+
+// UPDATE
+const updateMutation = useMutation({
+  mutationFn: updateProject,
+
+  onSuccess: async () => {
+
+    await queryClient.invalidateQueries({
+      queryKey: ["projects"],
+    });
+
+    setIsEditModalOpen(false);
+    setEditingProject(null);
+  },
+});
+
+// DELETE
+const deleteMutation = useMutation({
+  mutationFn: deleteProject,
+
+  onSuccess: async (_, deletedId) => {
+
+    await queryClient.setQueryData(
+      ["projects"],
+      (old: any) => {
+
         if (!old) return old;
 
-        const filtered = (Array.isArray(old) ? old : old.results).filter(
+        const filtered = (
+          Array.isArray(old)
+            ? old
+            : old.results
+        ).filter(
           (proj: any) => proj.id !== deletedId
         );
 
         return Array.isArray(old)
           ? filtered
           : { ...old, results: filtered };
-      });
-    },
-  });
+      }
+    );
+
+    setIsDeleteModalOpen(false);
+    setProjectToDelete(null);
+  },
+});
 
   const handleProjectClick = (project: any) => {
     navigate(`/projects/${project.id}/modules`);
@@ -105,8 +140,19 @@ export function ProjectsPage() {
     );
   }
 
-  return (
-    <div className="p-8">
+return (
+  <div className="p-8">
+
+    {/* GLOBAL LOADER */}
+    {(createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending) && (
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] flex items-center justify-center">
+
+        <div className="w-16 h-16 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+
+      </div>
+    )}
       <div className="flex justify-between mb-6">
         <h1 className="text-2xl font-semibold">Projects</h1>
 
@@ -114,7 +160,7 @@ export function ProjectsPage() {
         {can(role, "projects", "create") && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer"
           >
             + New Project
           </button>
@@ -136,6 +182,7 @@ export function ProjectsPage() {
                 {/* 🔥 UPDATE */}
                 {can(role, "projects", "update") && (
                   <button
+                    className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setEditingProject(project);
@@ -149,6 +196,7 @@ export function ProjectsPage() {
                 {/* 🔥 DELETE */}
                 {can(role, "projects", "delete") && (
                   <button
+                    className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setProjectToDelete(project);
@@ -176,29 +224,43 @@ export function ProjectsPage() {
         onClose={() => setIsCreateModalOpen(false)}
         title="Create Project"
       >
-        <input
-          placeholder="Title"
-          className="border p-2 w-full mb-2"
-          value={newProject.title}
-          onChange={(e) =>
-            setNewProject({
-              ...newProject,
-              title: e.target.value,
-            })
-          }
-        />
+{/* TITLE */}
+<div className="mb-4">
+  <label className="block mb-1 font-medium">
+    Title
+  </label>
 
-        <textarea
-          placeholder="Description"
-          className="border p-2 w-full"
-          value={newProject.description}
-          onChange={(e) =>
-            setNewProject({
-              ...newProject,
-              description: e.target.value,
-            })
-          }
-        />
+  <input
+    placeholder="Enter title"
+    className="border p-2 w-full rounded"
+    value={newProject.title}
+    onChange={(e) =>
+      setNewProject({
+        ...newProject,
+        title: e.target.value,
+      })
+    }
+  />
+</div>
+
+{/* DESCRIPTION */}
+<div className="mb-4">
+  <label className="block mb-1 font-medium">
+    Description
+  </label>
+
+  <textarea
+    placeholder="Enter description"
+    className="border p-2 w-full rounded"
+    value={newProject.description}
+    onChange={(e) =>
+      setNewProject({
+        ...newProject,
+        description: e.target.value,
+      })
+    }
+  />
+</div>
 
         <div className="flex gap-2 mt-3">
           <button
@@ -209,14 +271,14 @@ export function ProjectsPage() {
           </button>
 
           <button
-            onClick={() => {
-              createMutation.mutate(newProject);
-              setIsCreateModalOpen(false);
-            }}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Create
-          </button>
+  disabled={createMutation.isPending}
+  onClick={() => {
+    createMutation.mutate(newProject);
+  }}
+  className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+>
+  {createMutation.isPending ? "Creating..." : "Create"}
+</button>
         </div>
       </Modal>
 
@@ -258,21 +320,23 @@ export function ProjectsPage() {
                 Cancel
               </button>
 
-              <button
-                onClick={() => {
-                  updateMutation.mutate({
-                    id: editingProject.id,
-                    data: {
-                      title: editingProject.title,
-                      description: editingProject.description,
-                    },
-                  });
-                  setIsEditModalOpen(false);
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                Update
-              </button>
+<button
+  disabled={updateMutation.isPending}
+  onClick={() => {
+
+    updateMutation.mutate({
+      id: editingProject.id,
+      data: {
+        title: editingProject.title,
+        description: editingProject.description,
+      },
+    });
+
+  }}
+  className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+>
+  {updateMutation.isPending ? "Updating..." : "Update"}
+</button>
             </div>
           </>
         )}
@@ -295,14 +359,18 @@ export function ProjectsPage() {
           </button>
 
           <button
-            onClick={() => {
-              deleteMutation.mutate(projectToDelete.id);
-              setIsDeleteModalOpen(false);
-            }}
-            className="bg-red-600 text-white px-4 py-2 rounded"
-          >
-            Delete
-          </button>
+  disabled={deleteMutation.isPending}
+  onClick={() => {
+
+    if (!projectToDelete?.id) return;
+
+    deleteMutation.mutate(projectToDelete.id);
+
+  }}
+  className="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50"
+>
+  {deleteMutation.isPending ? "Deleting..." : "Delete"}
+</button>
         </div>
       </Modal>
     </div>

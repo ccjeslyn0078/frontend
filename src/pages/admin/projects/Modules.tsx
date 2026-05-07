@@ -25,7 +25,6 @@ import {
   deleteModule,
 } from "@/utils/api/modules.api";
 
-// ✅ UPDATED IMPORT
 import { useAuth } from "@/context/AuthContext";
 import { can } from "@/utils/api/permissions";
 
@@ -34,7 +33,6 @@ export function Modules() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // ✅ GET ROLE FROM AUTH CONTEXT
   const { user } = useAuth();
   const role = user?.role || "";
 
@@ -44,14 +42,20 @@ export function Modules() {
   const [moduleToDelete, setModuleToDelete] = useState<any>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["modules", projectId],
     queryFn: () => getModules(projectId!),
   });
 
-  const modules = Array.isArray(data)
-    ? data
-    : data?.results || [];
+  const modules = (
+    Array.isArray(data)
+      ? data
+      : data?.results || []
+  ).sort(
+    (a: any, b: any) =>
+      new Date(a.created_at || 0).getTime() -
+      new Date(b.created_at || 0).getTime()
+  );
 
   const handleEdit = (module: any) => {
     setEditingModule(module);
@@ -74,43 +78,65 @@ export function Modules() {
 
   // CREATE
   const createMutation = useMutation({
-    mutationFn: createModule,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["modules", projectId],
-      });
-    },
-  });
+  mutationFn: createModule,
 
+  onSuccess: async () => {
+
+    await queryClient.invalidateQueries({
+      queryKey: ["modules", projectId],
+    });
+
+    handleCloseModal();
+  },
+});
   // UPDATE
   const updateMutation = useMutation({
-    mutationFn: updateModule,
-    onSuccess: () => {
-      refetch();
-    },
-  });
+  mutationFn: updateModule,
+
+  onSuccess: async () => {
+
+    await queryClient.invalidateQueries({
+      queryKey: ["modules", projectId],
+    });
+
+    handleCloseModal();
+  },
+});
 
   // DELETE
   const deleteMutation = useMutation({
     mutationFn: deleteModule,
+
     onSuccess: (_, deletedId) => {
+
       queryClient.setQueryData(
         ["modules", projectId],
         (old: any) => {
           if (!old) return old;
 
-          const filtered = (Array.isArray(old)
-            ? old
-            : old.results
-          ).filter((mod: any) => mod.uuid !== deletedId);
+          const filtered = (
+            Array.isArray(old)
+              ? old
+              : old.results
+          ).filter(
+            (mod: any) => mod.uuid !== deletedId
+          );
 
           return Array.isArray(old)
             ? filtered
             : { ...old, results: filtered };
         }
       );
+
+      setIsDeleteModalOpen(false);
+      setModuleToDelete(null);
     },
   });
+
+  const isAnyLoading =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending;
 
   if (isLoading) {
     return <div className="p-6">Loading modules...</div>;
@@ -126,51 +152,75 @@ export function Modules() {
 
   return (
     <div className="p-8">
+
+      {/* GLOBAL LOADER */}
+      {isAnyLoading && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+        </div>
+      )}
+
       {/* Breadcrumb */}
       <Breadcrumb className="mb-4">
         <BreadcrumbList>
+
           <BreadcrumbItem>
-            <BreadcrumbLink href="/projects">Projects</BreadcrumbLink>
+            <BreadcrumbLink href="/projects">
+              Projects
+            </BreadcrumbLink>
           </BreadcrumbItem>
+
           <BreadcrumbSeparator />
+
           <BreadcrumbItem>
-            <BreadcrumbPage>Modules</BreadcrumbPage>
+            <BreadcrumbPage>
+              Modules
+            </BreadcrumbPage>
           </BreadcrumbItem>
+
         </BreadcrumbList>
       </Breadcrumb>
 
       {/* HEADER */}
       <div className="flex justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Modules</h1>
 
-        {/* 🔥 CREATE BUTTON */}
+        <h1 className="text-2xl font-semibold">
+          Modules
+        </h1>
+
         {can(role, "modules", "create") && (
           <button
             onClick={handleAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2"
+            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Module
           </button>
         )}
+
       </div>
 
       {/* GRID */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+
         {modules.map((module: any) => (
+
           <div
             key={module.uuid}
             onClick={() => handleModuleClick(module)}
             className="border p-5 rounded cursor-pointer hover:shadow"
           >
+
             <div className="flex justify-between mb-2">
+
               <FolderKanban className="text-blue-600" />
 
               <div className="flex gap-2">
 
-                {/* 🔥 EDIT */}
+                {/* EDIT */}
                 {can(role, "modules", "update") && (
                   <button
+                  className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEdit(module);
@@ -180,11 +230,13 @@ export function Modules() {
                   </button>
                 )}
 
-                {/* 🔥 DELETE */}
+                {/* DELETE */}
                 {can(role, "modules", "delete") && (
                   <button
+                  className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
+
                       setModuleToDelete(module);
                       setIsDeleteModalOpen(true);
                     }}
@@ -196,13 +248,17 @@ export function Modules() {
               </div>
             </div>
 
-            <h3 className="font-semibold">{module.name}</h3>
+            <h3 className="font-semibold">
+              {module.name}
+            </h3>
 
             <p className="text-xs text-gray-500 mt-2">
               Project: {module.project}
             </p>
+
           </div>
         ))}
+
       </div>
 
       {/* CREATE / EDIT MODAL */}
@@ -212,24 +268,35 @@ export function Modules() {
         module={editingModule}
         projectId={projectId!}
         onSubmit={(data: any) => {
+
           if (editingModule) {
+
             updateMutation.mutate({
               id: editingModule.uuid,
-              data: { ...data, projectId },
+              data: {
+                ...data,
+                projectId,
+              },
             });
+
           } else {
+
             createMutation.mutate({
               ...data,
               projectId,
             });
+
           }
         }}
       />
 
       {/* DELETE MODAL */}
       {isDeleteModalOpen && (
+
         <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/20 z-50">
+
           <div className="bg-white rounded-lg p-6 w-[400px] shadow-lg">
+
             <h2 className="text-lg font-semibold mb-3">
               Delete Module
             </h2>
@@ -239,6 +306,7 @@ export function Modules() {
             </p>
 
             <div className="flex justify-end gap-3">
+
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
                 className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
@@ -248,17 +316,25 @@ export function Modules() {
 
               <button
                 onClick={() => {
-                  deleteMutation.mutate(moduleToDelete.uuid);
-                  setIsDeleteModalOpen(false);
+
+                  if (!moduleToDelete?.uuid) return;
+
+                  deleteMutation.mutate(
+                    moduleToDelete.uuid
+                  );
                 }}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
                 Delete
               </button>
+
             </div>
+
           </div>
+
         </div>
       )}
+
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 
 export default function LoginPage() {
@@ -65,12 +65,7 @@ export default function LoginPage() {
           </p>
         )}
 
-        <p className="text-sm text-center">
-          Don't have an account?{" "}
-          <Link to="/auth/register" className="text-blue-600 hover:underline">
-            Register
-          </Link>
-        </p>
+        
       </form>
     </div>
   );
