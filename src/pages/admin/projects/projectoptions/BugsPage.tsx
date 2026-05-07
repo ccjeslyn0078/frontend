@@ -62,6 +62,12 @@ const addStep = () => {
   setSteps([...steps, ""]);
 };
 
+const removeStep = (index: number) => {
+  const updated = steps.filter((_, i) => i !== index);
+
+  setSteps(updated.length ? updated : [""]);
+};
+
   const { data, isLoading } = useQuery({
     queryKey: ["bugs", screenId],
     queryFn: () => getBugs(screenId as string),
@@ -80,11 +86,15 @@ const addStep = () => {
 
   // UPDATE
   const updateMutation = useMutation({
-    mutationFn: updateBug,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
-    },
-  });
+  mutationFn: updateBug,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["bugs", screenId] });
+
+    setIsEditOpen(false);
+    setEditingBug(null);
+    setSteps([""]);
+  },
+});
 
   // DELETE
   const deleteMutation = useMutation({
@@ -137,19 +147,6 @@ const addStep = () => {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* 🔹 HEADER */}
-        <div className="flex justify-between mb-6">
-          <h1 className="text-2xl font-semibold">Bug Tracker</h1>
-
-          {can(role, "bugs", "create") && (
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="bg-red-600 text-white px-4 py-2 rounded"
-            >
-              + Report Bug
-            </button>
-          )}
-        </div>
 
         {/* 🔹 SEARCH */}
         <div className="mb-4 max-w-sm relative">
@@ -175,7 +172,6 @@ const addStep = () => {
                 <th className="px-4 py-2 text-left text-xs">Steps</th>
                 <th className="px-4 py-2 text-left text-xs">Actual</th>
                 <th className="px-4 py-2 text-left text-xs">Severity</th>
-                <th className="px-4 py-2 text-left text-xs">Status</th>
                 <th className="px-4 py-2 text-left text-xs">Assigned</th>
                 <th className="px-4 py-2 text-left text-xs">Created</th>
                 <th className="px-4 py-2 text-left text-xs">Actions</th>
@@ -219,8 +215,6 @@ const addStep = () => {
                   </td>
 
                   <td className="px-4 py-3">{bug.severity}</td>
-
-                  <td className="px-4 py-3">{bug.status}</td>
 
                   <td className="px-4 py-3">
                     {bug.created_by || "N/A"}
@@ -281,20 +275,36 @@ const addStep = () => {
   <div className="mb-4">
   <label>Steps:</label>
 
-  {steps.map((step, index) => (
-    <div key={index} style={{ display: "flex", gap: "10px" }}>
-      <span>Step {index + 1}</span>
+{steps.map((step, index) => (
+  <div key={index} style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
+    
+    <span>Step {index + 1}</span>
 
-      <input
-        value={step}
-        onChange={(e) => handleStepChange(index, e.target.value)}
-      />
+    <input
+      value={step}
+      onChange={(e) => handleStepChange(index, e.target.value)}
+      className="border p-1 flex-1"
+    />
 
-      {index === steps.length - 1 && (
-        <button onClick={addStep}>+</button>
-      )}
-    </div>
-  ))}
+    <button
+      type="button"
+      onClick={() => removeStep(index)}
+      className="px-2 bg-red-500 text-white rounded hover:bg-red-600"
+    >
+      x
+    </button>
+
+    {index === steps.length - 1 && (
+      <button
+        type="button"
+        onClick={addStep}
+        className="px-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        +
+      </button>
+    )}
+  </div>
+))}
 </div>
 
   <div className="mb-2">
@@ -386,22 +396,38 @@ const addStep = () => {
       <div className="mb-4">
         <label>Steps:</label>
 
-        {steps.map((step, index) => (
-          <div key={index} style={{ display: "flex", gap: "10px" }}>
-            <span>Step {index + 1}</span>
+{steps.map((step, index) => (
+  <div key={index} style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
+    
+    <span>Step {index + 1}</span>
 
-            <input
-              value={step}
-              onChange={(e) =>
-                handleStepChange(index, e.target.value)
-              }
-            />
+    <input
+      value={step}
+      onChange={(e) =>
+        handleStepChange(index, e.target.value)
+      }
+      className="border p-1 flex-1"
+    />
 
-            {index === steps.length - 1 && (
-              <button onClick={addStep}>+</button>
-            )}
-          </div>
-        ))}
+    <button
+      type="button"
+      onClick={() => removeStep(index)}
+      className="px-2 bg-red-500 text-white rounded hover:bg-red-600"
+    >
+      x
+    </button>
+
+    {index === steps.length - 1 && (
+      <button
+        type="button"
+        onClick={addStep}
+        className="px-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        +
+      </button>
+    )}
+  </div>
+))}
       </div>
 
       {/* EXPECTED */}
@@ -444,22 +470,6 @@ const addStep = () => {
         <option value="low">Low</option>
         <option value="medium">Medium</option>
         <option value="high">High</option>
-      </select>
-
-      {/* STATUS */}
-      <select
-        className="border p-2 w-full mb-2"
-        value={editingBug.status}
-        onChange={(e) =>
-          setEditingBug({
-            ...editingBug,
-            status: e.target.value,
-          })
-        }
-      >
-        <option value="open">Open</option>
-        <option value="in_progress">In Progress</option>
-        <option value="closed">Closed</option>
       </select>
 
       {/* UPDATE BUTTON */}
