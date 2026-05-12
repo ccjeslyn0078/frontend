@@ -6,6 +6,7 @@ import { Screens } from "@/pages/admin/projects/Screens";
 import TestCasesPage from "@/pages/admin/projects/projectoptions/TestCasesPage";
 import TestRunPage from "@/pages/admin/projects/projectoptions/TestRunPage";
 import BugsPage from "@/pages/admin/projects/projectoptions/BugsPage";
+import TestRunVersions from "@/pages/admin/projects/projectoptions/TestRunVersions";
 
 function Dashboard() {
   return <div className="p-6 text-gray-700">Dashboard</div>;
@@ -44,7 +45,13 @@ export default function AdminRoutes() {
         <Route
           path="projects/:projectId/modules/:moduleId/screens/:screenId/test-run"
           element={<TestRunPage />}
+
         />
+
+        <Route
+  path="/projects/:projectId/modules/:moduleId/screens/:screenId/versions"
+  element={<TestRunVersions />}
+/>
 
         {/* Bugs */}
         <Route

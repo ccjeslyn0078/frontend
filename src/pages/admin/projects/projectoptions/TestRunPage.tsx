@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+
 import { createTestRun } from "@/utils/api/testrun.api";
 
 import {
@@ -14,14 +16,12 @@ import {
 import { getTestCases } from "@/utils/api/testcase.api";
 import { BugModal } from "@/components/BugModal";
 
-// ✅ UPDATED IMPORT
 import { useAuth } from "@/context/AuthContext";
 import { can } from "@/utils/api/permissions";
 
 export default function TestRun() {
   const { projectId, moduleId, screenId } = useParams();
 
-  // ✅ GET ROLE FROM AUTH CONTEXT
   const { user } = useAuth();
   const role = user?.role || "";
 
@@ -29,13 +29,34 @@ export default function TestRun() {
   const [bugModalOpen, setBugModalOpen] = useState(false);
   const [selectedTestCase, setSelectedTestCase] = useState<any>(null);
 
-  const [isActualModalOpen, setIsActualModalOpen] = useState(false);
-  const [selectedTc, setSelectedTc] = useState<any>(null);
-  const [actualValue, setActualValue] = useState("");
+  const [isActualModalOpen, setIsActualModalOpen] =
+    useState(false);
+
+  const [selectedTc, setSelectedTc] =
+    useState<any>(null);
+
+  const [actualValue, setActualValue] =
+    useState("");
+
+  // ✅ NEW STATES
+
+  const [versions, setVersions] = useState<any[]>(
+    []
+  );
+
+  const [selectedVersion, setSelectedVersion] =
+    useState("");
+
+  const [testRuns, setTestRuns] = useState<any[]>(
+    []
+  );
+
+  // ✅ FETCH TEST CASES
 
   const { data } = useQuery({
     queryKey: ["testcases", screenId],
-    queryFn: () => getTestCases(screenId as string),
+    queryFn: () =>
+      getTestCases(screenId as string),
     enabled: !!screenId,
   });
 
@@ -43,25 +64,79 @@ export default function TestRun() {
     ? data
     : data?.results || [];
 
+  // ✅ FETCH VERSIONS
+
+  useEffect(() => {
+    fetchVersions();
+  }, []);
+
+  const fetchVersions = async () => {
+    try {
+      const res = await axios.get(
+        "http://127.0.0.1:8000/api/test-run-versions/"
+      );
+
+      setVersions(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ✅ FETCH TEST RUNS BY VERSION
+
+  const fetchTestRuns = async (
+    versionId: string
+  ) => {
+    try {
+      const res = await axios.get(
+        `http://127.0.0.1:8000/api/test-runs/by-version/${versionId}/`
+      );
+
+      setTestRuns(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ✅ VERSION CHANGE
+
+  useEffect(() => {
+    if (selectedVersion) {
+      fetchTestRuns(selectedVersion);
+    }
+  }, [selectedVersion]);
+
   // ✅ PASS TOGGLE
-  const handlePassChange = (tcId: string, checked: boolean) => {
+
+  const handlePassChange = (
+    tcId: string,
+    checked: boolean
+  ) => {
     setTestResults((prev: any) => ({
       ...prev,
       [tcId]: {
         ...prev[tcId],
         pass: checked,
-        fail: checked ? false : prev[tcId]?.fail,
+        fail: checked
+          ? false
+          : prev[tcId]?.fail,
       },
     }));
   };
 
   // ✅ FAIL TOGGLE
-  const handleFailChange = (tc: any, checked: boolean) => {
+
+  const handleFailChange = (
+    tc: any,
+    checked: boolean
+  ) => {
     setTestResults((prev: any) => ({
       ...prev,
       [tc.uuid]: {
         ...prev[tc.uuid],
-        pass: checked ? false : prev[tc.uuid]?.pass,
+        pass: checked
+          ? false
+          : prev[tc.uuid]?.pass,
         fail: checked,
       },
     }));
@@ -73,14 +148,17 @@ export default function TestRun() {
   };
 
   // ✅ ACTUAL RESULT
-  const handleActualChange = (tcId: string, value: string) => {
+
+  const handleActualChange = (
+    tcId: string,
+    value: string
+  ) => {
     setTestResults((prev: any) => ({
       ...prev,
       [tcId]: {
         ...prev[tcId],
         actual: value,
 
-        // ✅ FIXED AUTO PASS ISSUE
         pass: prev[tcId]?.pass ?? false,
         fail: prev[tcId]?.fail ?? false,
       },
@@ -92,17 +170,22 @@ export default function TestRun() {
       <div className="max-w-7xl mx-auto px-6 py-6">
 
         {/* BREADCRUMB */}
+
         <Breadcrumb className="mb-6">
           <BreadcrumbList className="flex gap-2 text-sm text-gray-500">
 
             <BreadcrumbItem>
-              <Link to="/projects">Projects</Link>
+              <Link to="/projects">
+                Projects
+              </Link>
             </BreadcrumbItem>
 
             <BreadcrumbSeparator />
 
             <BreadcrumbItem>
-              <Link to={`/projects/${projectId}/modules`}>
+              <Link
+                to={`/projects/${projectId}/modules`}
+              >
                 Modules
               </Link>
             </BreadcrumbItem>
@@ -120,23 +203,68 @@ export default function TestRun() {
             <BreadcrumbSeparator />
 
             <BreadcrumbItem>
-              <BreadcrumbPage>Test Run</BreadcrumbPage>
+              <BreadcrumbPage>
+                Test Run
+              </BreadcrumbPage>
             </BreadcrumbItem>
 
           </BreadcrumbList>
         </Breadcrumb>
 
         {/* HEADER */}
-        <h1 className="text-2xl font-semibold mb-4">
-          Test Run
-        </h1>
+
+        <div className="flex justify-between items-center mb-6">
+
+          <h1 className="text-2xl font-semibold">
+            Test Run
+          </h1>
+
+          {/* ✅ VERSION DROPDOWN */}
+
+          <select
+            value={selectedVersion}
+            onChange={(e) =>
+              setSelectedVersion(
+                e.target.value
+              )
+            }
+            className="
+              border
+              rounded-xl
+              px-4
+              py-2
+              bg-white
+              shadow-sm
+              outline-none
+              min-w-[220px]
+            "
+          >
+
+            <option value="">
+              Select Version
+            </option>
+
+            {versions.map((version) => (
+              <option
+                key={version.uuid}
+                value={version.uuid}
+              >
+                {version.version_number}
+              </option>
+            ))}
+
+          </select>
+
+        </div>
 
         {/* TABLE */}
+
         <div className="overflow-x-auto bg-white border rounded-xl">
 
           <table className="w-full">
 
             <thead className="bg-gray-50">
+
               <tr>
 
                 <th className="p-3 text-left">
@@ -156,7 +284,7 @@ export default function TestRun() {
                 </th>
 
                 <th className="p-3 text-center w-[220px]">
-                  Actual 
+                  Actual
                 </th>
 
                 <th className="p-3 text-center">
@@ -168,43 +296,59 @@ export default function TestRun() {
                 </th>
 
               </tr>
+
             </thead>
 
             <tbody>
 
-              {testCases.map((tc: any) => (
+              {(selectedVersion
+                ? testRuns
+                : testCases
+              ).map((tc: any) => (
 
-                <tr key={tc.uuid} className="border-b">
+                <tr
+                  key={tc.uuid}
+                  className="border-b"
+                >
 
                   {/* TC ID */}
+
                   <td className="p-3">
                     {tc.uuid.slice(0, 6)}
                   </td>
 
                   {/* TITLE */}
+
                   <td className="p-3">
                     {tc.title}
                   </td>
 
                   {/* STEPS */}
+
                   <td className="p-3">
 
                     {tc.steps &&
-                    typeof tc.steps === "object" ? (
+                    typeof tc.steps ===
+                      "object" ? (
 
                       <div className="space-y-1">
 
-                        {Object.entries(tc.steps).map(
+                        {Object.entries(
+                          tc.steps
+                        ).map(
                           ([key, value]: any) => (
 
                             <div
                               key={key}
                               className="text-xs"
                             >
+
                               <span className="font-medium">
                                 {key}:
                               </span>{" "}
+
                               {value}
+
                             </div>
 
                           )
@@ -223,16 +367,22 @@ export default function TestRun() {
                   </td>
 
                   {/* EXPECTED */}
+
                   <td className="p-3">
                     {tc.expected_results}
                   </td>
 
                   {/* ACTUAL */}
+
                   <td className="p-3 w-[220px] text-center">
 
                     <button
                       disabled={
-                        !can(role, "testruns", "update")
+                        !can(
+                          role,
+                          "testruns",
+                          "update"
+                        )
                       }
 
                       onClick={() => {
@@ -240,10 +390,13 @@ export default function TestRun() {
                         setSelectedTc(tc);
 
                         setActualValue(
-                          testResults[tc.uuid]?.actual || ""
+                          testResults[tc.uuid]
+                            ?.actual || ""
                         );
 
-                        setIsActualModalOpen(true);
+                        setIsActualModalOpen(
+                          true
+                        );
 
                       }}
 
@@ -265,13 +418,20 @@ export default function TestRun() {
                       "
                     >
 
-                      {testResults[tc.uuid]?.actual
-                        ? testResults[tc.uuid].actual.length > 18
-                          ? testResults[tc.uuid].actual.slice(
+                      {testResults[tc.uuid]
+                        ?.actual
+                        ? testResults[
+                            tc.uuid
+                          ].actual.length > 18
+                          ? testResults[
+                              tc.uuid
+                            ].actual.slice(
                               0,
                               18
                             ) + "..."
-                          : testResults[tc.uuid].actual
+                          : testResults[
+                              tc.uuid
+                            ].actual
                         : "Add +"}
 
                     </button>
@@ -279,24 +439,32 @@ export default function TestRun() {
                   </td>
 
                   {/* PASS */}
+
                   <td className="text-center">
 
                     <button
                       disabled={
-                        !can(role, "testruns", "update")
+                        !can(
+                          role,
+                          "testruns",
+                          "update"
+                        )
                       }
 
                       onClick={() =>
                         handlePassChange(
                           tc.uuid,
-                          !testResults[tc.uuid]?.pass
+                          !testResults[
+                            tc.uuid
+                          ]?.pass
                         )
                       }
 
                       className={`relative inline-flex h-6 w-12 items-center rounded-full transition cursor-pointer
 
                         ${
-                          testResults[tc.uuid]?.pass
+                          testResults[tc.uuid]
+                            ?.pass
                             ? "bg-green-600"
                             : "bg-gray-300"
                         }
@@ -309,7 +477,9 @@ export default function TestRun() {
                         className={`inline-block h-5 w-5 transform rounded-full bg-white transition
 
                           ${
-                            testResults[tc.uuid]?.pass
+                            testResults[
+                              tc.uuid
+                            ]?.pass
                               ? "translate-x-6"
                               : "translate-x-1"
                           }
@@ -321,24 +491,32 @@ export default function TestRun() {
                   </td>
 
                   {/* FAIL */}
+
                   <td className="text-center">
 
                     <button
                       disabled={
-                        !can(role, "testruns", "update")
+                        !can(
+                          role,
+                          "testruns",
+                          "update"
+                        )
                       }
 
                       onClick={() =>
                         handleFailChange(
                           tc,
-                          !testResults[tc.uuid]?.fail
+                          !testResults[
+                            tc.uuid
+                          ]?.fail
                         )
                       }
 
                       className={`relative inline-flex h-6 w-12 items-center rounded-full transition cursor-pointer
 
                         ${
-                          testResults[tc.uuid]?.fail
+                          testResults[tc.uuid]
+                            ?.fail
                             ? "bg-red-600"
                             : "bg-gray-300"
                         }
@@ -351,7 +529,9 @@ export default function TestRun() {
                         className={`inline-block h-5 w-5 transform rounded-full bg-white transition
 
                           ${
-                            testResults[tc.uuid]?.fail
+                            testResults[
+                              tc.uuid
+                            ]?.fail
                               ? "translate-x-6"
                               : "translate-x-1"
                           }
@@ -375,13 +555,13 @@ export default function TestRun() {
       </div>
 
       {/* ACTUAL RESULT MODAL */}
+
       {isActualModalOpen && (
 
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
 
           <div className="bg-white rounded-xl p-6 w-[500px] shadow-xl">
 
-            {/* HEADER */}
             <div className="flex justify-between items-center mb-4">
 
               <h2 className="text-xl font-semibold">
@@ -390,7 +570,9 @@ export default function TestRun() {
 
               <button
                 onClick={() =>
-                  setIsActualModalOpen(false)
+                  setIsActualModalOpen(
+                    false
+                  )
                 }
                 className="text-2xl cursor-pointer"
               >
@@ -399,12 +581,13 @@ export default function TestRun() {
 
             </div>
 
-            {/* TEXTAREA */}
             <textarea
               value={actualValue}
 
               onChange={(e) =>
-                setActualValue(e.target.value)
+                setActualValue(
+                  e.target.value
+                )
               }
 
               placeholder="Enter actual result..."
@@ -421,12 +604,13 @@ export default function TestRun() {
               "
             />
 
-            {/* BUTTONS */}
             <div className="flex justify-end gap-3 mt-5">
 
               <button
                 onClick={() =>
-                  setIsActualModalOpen(false)
+                  setIsActualModalOpen(
+                    false
+                  )
                 }
 
                 className="
@@ -452,21 +636,27 @@ export default function TestRun() {
                   try {
 
                     await createTestRun({
-                      test_case: selectedTc.uuid,
+                      test_case:
+                        selectedTc.uuid,
 
-                      actual_results: actualValue,
+                      actual_results:
+                        actualValue,
 
                       status:
-                        testResults[selectedTc.uuid]
-                          ?.fail
+                        testResults[
+                          selectedTc.uuid
+                        ]?.fail
                           ? "fail"
-                          : testResults[selectedTc.uuid]
-                              ?.pass
+                          : testResults[
+                              selectedTc.uuid
+                            ]?.pass
                           ? "pass"
                           : "pending",
                     });
 
-                    setIsActualModalOpen(false);
+                    setIsActualModalOpen(
+                      false
+                    );
 
                   } catch (err) {
                     console.error(err);
@@ -496,15 +686,19 @@ export default function TestRun() {
       )}
 
       {/* BUG MODAL */}
+
       <BugModal
         isOpen={bugModalOpen}
-        onClose={() => setBugModalOpen(false)}
+        onClose={() =>
+          setBugModalOpen(false)
+        }
         testCase={selectedTestCase}
         projectId={projectId}
         moduleId={moduleId}
         screenId={screenId}
         actualResult={
-          testResults[selectedTestCase?.uuid]?.actual
+          testResults[selectedTestCase?.uuid]
+            ?.actual
         }
       />
 
