@@ -1,46 +1,50 @@
 const BASE_URL = "http://127.0.0.1:8000/api";
 
-export const getAuthHeaders = () => {
-  const token = localStorage.getItem("access");
-
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-};
-
 const API = async (
   endpoint: string,
   options: RequestInit = {},
-  requireAuth: boolean = true
+  auth: boolean = true
 ) => {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      ...(requireAuth
-        ? getAuthHeaders()
-        : { "Content-Type": "application/json" }),
-      ...(options.headers || {}),
-    },
-  });
 
-  // 🔥 HANDLE UNAUTHORIZED (VERY IMPORTANT)
-  if (res.status === 401) {
-    localStorage.clear();
-    window.location.href = "/auth/login";
-    return;
+  const token =
+    localStorage.getItem("access");
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
+  if (auth && token) {
+    headers["Authorization"] =
+      `Bearer ${token}`;
   }
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "API request failed");
+  const response = await fetch(
+    `${BASE_URL}${endpoint}`,
+    {
+      ...options,
+      headers,
+    }
+  );
+
+  const data = await response.json();
+
+  console.log(
+    "API RESPONSE:",
+    endpoint,
+    data
+  );
+
+  if (!response.ok) {
+
+    throw new Error(
+      data?.detail ||
+      data?.message ||
+      "API Error"
+    );
   }
 
-  if (res.status === 204) {
-    return null;
-  }
-
-  return res.json();
+  return data;
 };
 
 export default API;

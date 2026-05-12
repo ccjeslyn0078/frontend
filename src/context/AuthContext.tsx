@@ -64,24 +64,28 @@ export const AuthProvider = ({ children }: any) => {
   }, [token]);
 
   // ✅ LOGIN
-  const login = async (data: any) => {
-    const res = await API(
-      "/users/login/",
-      {
-        method: "POST",
-        body: JSON.stringify(data),
-      },
-      false
-    );
+const login = async (data: any) => {
 
-    const accessToken = res.tokens?.access || res.access;
+  const res = await API(
+    "/users/login/",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+    false
+  );
 
-    localStorage.setItem("access", accessToken);
-    setToken(accessToken);
+  console.log("LOGIN RESPONSE:", res);
 
-    // 🔥 Fetch user → also stores role now
-    await fetchUser();
-  };
+  const accessToken =
+    res.tokens?.access || res.access;
+
+  localStorage.setItem("access", accessToken);
+
+  setToken(accessToken);
+
+  await fetchUser();
+};
 
   // ✅ REGISTER
   const register = async (data: any) => {
