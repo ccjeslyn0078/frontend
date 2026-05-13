@@ -31,7 +31,7 @@ export const can = (role: string, resource: string, action: string) => {
       screens: ["create", "read", "update", "delete"],
       testcases: ["create", "read", "update", "delete"],
       bugs: ["create", "read", "update", "delete"],
-      testruns: ["create", "read", "update"],
+      testruns: ["create", "read", "update","delete"],
     },
     tester: {
       projects: ["read"],
@@ -39,7 +39,7 @@ export const can = (role: string, resource: string, action: string) => {
       screens: ["create", "read", "update"],
       testcases: ["create", "read", "update"],
       bugs: ["create", "read", "update", "delete"],
-      testruns: ["create", "read", "update"],
+      testruns: ["create", "read", "update",],
     },
     reviewer: {
       projects: ["read"],

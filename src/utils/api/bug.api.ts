@@ -1,31 +1,63 @@
-
 import API from "@/utils/api/fetchclient";
-// GET
-export const getBugs = async (screenId: string) => {
+
+// GET BUGS
+export const getBugs =
+async (screenId: string) => {
+
   return API(`/bugs/?screen=${screenId}`, {
     method: "GET",
   });
+
 };
 
-// CREATE
-export const createBug = async (data: any) => {
+// CREATE BUG
+export const createBug =
+async (data: any) => {
+
   return API(`/bugs/`, {
     method: "POST",
     body: JSON.stringify(data),
   });
+
 };
 
-// UPDATE
-export const updateBug = async ({ id, data }: any) => {
-  return API(`/bugs/${id}/`, {
+// UPDATE BUG
+export const updateBug =
+async ({
+  uuid,
+  data,
+}: any) => {
+
+  return API(`/bugs/${uuid}/`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
+
 };
 
-// DELETE
-export const deleteBug = async (id: string) => {
-  return API(`/bugs/${id}/`, {
+// DELETE BUG
+export const deleteBug =
+async (uuid: string) => {
+
+  return API(`/bugs/${uuid}/`, {
     method: "DELETE",
   });
+
+};
+
+// REVIEWER COMMENT
+export const addBugComment =
+async ({
+  uuid,
+  data,
+}: any) => {
+
+  return API(
+    `/bugs/${uuid}/comment/`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  );
+
 };

@@ -1,10 +1,13 @@
 import { useState } from "react";
+
 import {
   FolderKanban,
   Pencil,
   Trash2,
 } from "lucide-react";
+
 import { Modal } from "@/components/ui/Modal";
+
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -20,359 +23,786 @@ import {
   deleteProject,
 } from "@/utils/api/project.api";
 
-// ✅ UPDATED IMPORT
 import { useAuth } from "@/context/AuthContext";
+
 import { can } from "@/utils/api/permissions";
 
 export function ProjectsPage() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
-  // ✅ GET ROLE FROM AUTH CONTEXT
+  const navigate = useNavigate();
+
+  const queryClient =
+    useQueryClient();
+
   const { user } = useAuth();
+
   const role = user?.role || "";
 
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newProject, setNewProject] = useState({
-    title: "",
-    description: "",
-  });
+  const [
+    isCreateModalOpen,
+    setIsCreateModalOpen,
+  ] = useState(false);
 
-  const [editingProject, setEditingProject] = useState<any>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [newProject, setNewProject] =
+    useState({
 
-  const [projectToDelete, setProjectToDelete] = useState<any>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+      title: "",
 
-  const { data, isLoading, isError, refetch } = useQuery({
+      description: "",
+
+    });
+
+  const [
+    editingProject,
+    setEditingProject,
+  ] = useState<any>(null);
+
+  const [
+    isEditModalOpen,
+    setIsEditModalOpen,
+  ] = useState(false);
+
+  const [
+    projectToDelete,
+    setProjectToDelete,
+  ] = useState<any>(null);
+
+  const [
+    isDeleteModalOpen,
+    setIsDeleteModalOpen,
+  ] = useState(false);
+
+  // =========================================
+  // GET PROJECTS
+  // =========================================
+
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useQuery({
+
     queryKey: ["projects"],
+
     queryFn: getProjects,
+
   });
 
   const projects = (
-  Array.isArray(data)
-    ? data
-    : data?.results || []
-).sort(
-  (a: any, b: any) =>
-    new Date(a.created_at || 0).getTime() -
-    new Date(b.created_at || 0).getTime()
-);
+    Array.isArray(data)
+      ? data
+      : data?.results || []
+  ).sort(
 
-// CREATE
-const createMutation = useMutation({
-  mutationFn: createProject,
+    (a: any, b: any) =>
 
-  onSuccess: async () => {
+      new Date(
+        a.created_at || 0
+      ).getTime() -
 
-    await queryClient.invalidateQueries({
-      queryKey: ["projects"],
+      new Date(
+        b.created_at || 0
+      ).getTime()
+
+  );
+
+  // =========================================
+  // CREATE
+  // =========================================
+
+  const createMutation =
+    useMutation({
+
+      mutationFn: createProject,
+
+      onSuccess: async () => {
+
+        await queryClient.invalidateQueries({
+
+          queryKey: ["projects"],
+
+        });
+
+        setIsCreateModalOpen(false);
+
+        setNewProject({
+
+          title: "",
+
+          description: "",
+
+        });
+
+      },
+
     });
 
-    setIsCreateModalOpen(false);
+  // =========================================
+  // UPDATE
+  // =========================================
 
-    setNewProject({
-      title: "",
-      description: "",
+  const updateMutation =
+    useMutation({
+
+      mutationFn: updateProject,
+
+      onSuccess: async () => {
+
+        await queryClient.invalidateQueries({
+
+          queryKey: ["projects"],
+
+        });
+
+        setIsEditModalOpen(false);
+
+        setEditingProject(null);
+
+      },
+
     });
-  },
-});
 
-// UPDATE
-const updateMutation = useMutation({
-  mutationFn: updateProject,
+  // =========================================
+  // DELETE
+  // =========================================
 
-  onSuccess: async () => {
+  const deleteMutation =
+    useMutation({
 
-    await queryClient.invalidateQueries({
-      queryKey: ["projects"],
-    });
+      mutationFn: deleteProject,
 
-    setIsEditModalOpen(false);
-    setEditingProject(null);
-  },
-});
+      onSuccess: async (
+        _,
+        deletedUuid
+      ) => {
 
-// DELETE
-const deleteMutation = useMutation({
-  mutationFn: deleteProject,
+        await queryClient.setQueryData(
 
-  onSuccess: async (_, deletedId) => {
+          ["projects"],
 
-    await queryClient.setQueryData(
-      ["projects"],
-      (old: any) => {
+          (old: any) => {
 
-        if (!old) return old;
+            if (!old) return old;
 
-        const filtered = (
-          Array.isArray(old)
-            ? old
-            : old.results
-        ).filter(
-          (proj: any) => proj.id !== deletedId
+            const filtered = (
+              Array.isArray(old)
+                ? old
+                : old.results
+            ).filter(
+
+              (proj: any) =>
+                proj.uuid !== deletedUuid
+
+            );
+
+            return Array.isArray(old)
+
+              ? filtered
+
+              : {
+                  ...old,
+                  results: filtered,
+                };
+
+          }
         );
 
-        return Array.isArray(old)
-          ? filtered
-          : { ...old, results: filtered };
-      }
+        setIsDeleteModalOpen(false);
+
+        setProjectToDelete(null);
+
+      },
+
+    });
+
+  // =========================================
+  // CLICK PROJECT
+  // =========================================
+
+  const handleProjectClick = (
+    project: any
+  ) => {
+
+    console.log(
+      "PROJECT:",
+      project
     );
 
-    setIsDeleteModalOpen(false);
-    setProjectToDelete(null);
-  },
-});
+    console.log(
+      "UUID:",
+      project.uuid
+    );
 
-  const handleProjectClick = (project: any) => {
-    navigate(`/projects/${project.id}/modules`);
+    navigate(
+      `/projects/${project.uuid}/modules`
+    );
+
   };
 
-  if (isLoading) {
-    return <div className="p-6">Loading projects...</div>;
-  }
+  // =========================================
+  // LOADING
+  // =========================================
 
-  if (isError) {
+  if (isLoading) {
+
     return (
-      <div className="p-6 text-red-500">
-        Failed to load projects
+      <div className="p-6">
+        Loading projects...
       </div>
     );
+
   }
 
-return (
-  <div className="p-8">
+  // =========================================
+  // ERROR
+  // =========================================
 
-    {/* GLOBAL LOADER */}
-    {(createMutation.isPending ||
-      updateMutation.isPending ||
-      deleteMutation.isPending) && (
-      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] flex items-center justify-center">
+  if (isError) {
 
-        <div className="w-16 h-16 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+    return (
+
+      <div className="p-6 text-red-500">
+
+        Failed to load projects
 
       </div>
-    )}
+
+    );
+
+  }
+
+  return (
+
+    <div className="p-8">
+
+      {/* GLOBAL LOADER */}
+
+      {(
+
+        createMutation.isPending ||
+
+        updateMutation.isPending ||
+
+        deleteMutation.isPending
+
+      ) && (
+
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] flex items-center justify-center">
+
+          <div className="w-16 h-16 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+
+        </div>
+
+      )}
+
+      {/* HEADER */}
+
       <div className="flex justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Projects</h1>
 
-        {/* 🔥 CREATE */}
-        {can(role, "projects", "create") && (
+        <h1 className="text-2xl font-semibold">
+
+          Projects
+
+        </h1>
+
+        {/* CREATE */}
+
+        {can(
+          role,
+          "projects",
+          "create"
+        ) && (
+
           <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer"
+
+            onClick={() =>
+              setIsCreateModalOpen(true)
+            }
+
+            className="
+              bg-blue-600
+              text-white
+              px-4
+              py-2
+              rounded
+              cursor-pointer
+            "
           >
+
             + New Project
+
           </button>
+
         )}
+
       </div>
+
+      {/* GRID */}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+
         {projects.map((project: any) => (
+
           <div
-            key={project.id}
-            onClick={() => handleProjectClick(project)}
-            className="border p-5 rounded cursor-pointer hover:shadow"
+
+            key={project.uuid}
+
+            onClick={() =>
+              handleProjectClick(project)
+            }
+
+            className="
+              border
+              p-5
+              rounded
+              cursor-pointer
+              hover:shadow
+            "
           >
+
             <div className="flex justify-between mb-2">
+
               <FolderKanban className="text-blue-600" />
 
               <div className="flex gap-2">
 
-                {/* 🔥 UPDATE */}
-                {can(role, "projects", "update") && (
+                {/* EDIT */}
+
+                {can(
+                  role,
+                  "projects",
+                  "update"
+                ) && (
+
                   <button
+
                     className="cursor-pointer"
+
                     onClick={(e) => {
+
                       e.stopPropagation();
+
                       setEditingProject(project);
+
                       setIsEditModalOpen(true);
+
                     }}
                   >
+
                     <Pencil className="w-4 h-4 text-blue-500" />
+
                   </button>
+
                 )}
 
-                {/* 🔥 DELETE */}
-                {can(role, "projects", "delete") && (
+                {/* DELETE */}
+
+                {can(
+                  role,
+                  "projects",
+                  "delete"
+                ) && (
+
                   <button
+
                     className="cursor-pointer"
+
                     onClick={(e) => {
+
                       e.stopPropagation();
+
                       setProjectToDelete(project);
+
                       setIsDeleteModalOpen(true);
+
                     }}
                   >
+
                     <Trash2 className="w-4 h-4 text-red-500" />
+
                   </button>
+
                 )}
 
               </div>
+
             </div>
 
-            <h3 className="font-semibold">{project.title}</h3>
+            <h3 className="font-semibold">
+
+              {project.title}
+
+            </h3>
+
             <p className="text-sm text-gray-600">
+
               {project.description}
+
             </p>
+
           </div>
+
         ))}
+
       </div>
 
-      {/* CREATE */}
+      {/* CREATE MODAL */}
+
       <Modal
+
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+
+        onClose={() =>
+          setIsCreateModalOpen(false)
+        }
+
         title="Create Project"
       >
-{/* TITLE */}
-<div className="mb-4">
-  <label className="block mb-1 font-medium">
-    Title
-  </label>
 
-  <input
-    placeholder="Enter title"
-    className="border p-2 w-full rounded"
-    value={newProject.title}
-    onChange={(e) =>
-      setNewProject({
-        ...newProject,
-        title: e.target.value,
-      })
-    }
-  />
-</div>
+        {/* TITLE */}
 
-{/* DESCRIPTION */}
-<div className="mb-4">
-  <label className="block mb-1 font-medium">
-    Description
-  </label>
+        <div className="mb-4">
 
-  <textarea
-    placeholder="Enter description"
-    className="border p-2 w-full rounded"
-    value={newProject.description}
-    onChange={(e) =>
-      setNewProject({
-        ...newProject,
-        description: e.target.value,
-      })
-    }
-  />
-</div>
+          <label className="block mb-1 font-medium">
+
+            Title
+
+          </label>
+
+          <input
+
+            placeholder="Enter title"
+
+            className="border p-2 w-full rounded"
+
+            value={newProject.title}
+
+            onChange={(e) =>
+
+              setNewProject({
+
+                ...newProject,
+
+                title: e.target.value,
+
+              })
+
+            }
+          />
+
+        </div>
+
+        {/* DESCRIPTION */}
+
+        <div className="mb-4">
+
+          <label className="block mb-1 font-medium">
+
+            Description
+
+          </label>
+
+          <textarea
+
+            placeholder="Enter description"
+
+            className="border p-2 w-full rounded"
+
+            value={newProject.description}
+
+            onChange={(e) =>
+
+              setNewProject({
+
+                ...newProject,
+
+                description: e.target.value,
+
+              })
+
+            }
+          />
+
+        </div>
 
         <div className="flex gap-2 mt-3">
+
           <button
-            onClick={() => setIsCreateModalOpen(false)}
-            className="bg-gray-300 px-4 py-2 rounded"
+
+            onClick={() =>
+              setIsCreateModalOpen(false)
+            }
+
+            className="
+              bg-gray-300
+              px-4
+              py-2
+              rounded
+            "
           >
+
             Cancel
+
           </button>
 
           <button
-  disabled={createMutation.isPending}
-  onClick={() => {
-    createMutation.mutate(newProject);
-  }}
-  className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
->
-  {createMutation.isPending ? "Creating..." : "Create"}
-</button>
+
+            disabled={
+              createMutation.isPending
+            }
+
+            onClick={() => {
+
+              createMutation.mutate(
+                newProject
+              );
+
+            }}
+
+            className="
+              bg-blue-600
+              text-white
+              px-4
+              py-2
+              rounded
+              disabled:opacity-50
+            "
+          >
+
+            {createMutation.isPending
+
+              ? "Creating..."
+
+              : "Create"}
+
+          </button>
+
         </div>
+
       </Modal>
 
-      {/* EDIT */}
+      {/* EDIT MODAL */}
+
       <Modal
+
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+
+        onClose={() =>
+          setIsEditModalOpen(false)
+        }
+
         title="Edit Project"
       >
+
         {editingProject && (
+
           <>
+
             <input
-              className="border p-2 w-full mb-2"
+
+              className="
+                border
+                p-2
+                w-full
+                mb-2
+              "
+
               value={editingProject.title}
+
               onChange={(e) =>
+
                 setEditingProject({
+
                   ...editingProject,
+
                   title: e.target.value,
+
                 })
+
               }
             />
 
             <textarea
-              className="border p-2 w-full"
-              value={editingProject.description}
+
+              className="
+                border
+                p-2
+                w-full
+              "
+
+              value={
+                editingProject.description
+              }
+
               onChange={(e) =>
+
                 setEditingProject({
+
                   ...editingProject,
-                  description: e.target.value,
+
+                  description:
+                    e.target.value,
+
                 })
+
               }
             />
 
             <div className="flex gap-2 mt-3">
+
               <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="bg-gray-300 px-4 py-2 rounded"
+
+                onClick={() =>
+                  setIsEditModalOpen(false)
+                }
+
+                className="
+                  bg-gray-300
+                  px-4
+                  py-2
+                  rounded
+                "
               >
+
                 Cancel
+
               </button>
 
-<button
-  disabled={updateMutation.isPending}
-  onClick={() => {
+              <button
 
-    updateMutation.mutate({
-      id: editingProject.id,
-      data: {
-        title: editingProject.title,
-        description: editingProject.description,
-      },
-    });
+                disabled={
+                  updateMutation.isPending
+                }
 
-  }}
-  className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
->
-  {updateMutation.isPending ? "Updating..." : "Update"}
-</button>
+                onClick={() => {
+
+                  updateMutation.mutate({
+
+                    // ✅ FIXED
+                    uuid:
+                      editingProject.uuid,
+
+                    data: {
+
+                      title:
+                        editingProject.title,
+
+                      description:
+                        editingProject.description,
+
+                    },
+
+                  });
+
+                }}
+
+                className="
+                  bg-blue-600
+                  text-white
+                  px-4
+                  py-2
+                  rounded
+                  disabled:opacity-50
+                "
+              >
+
+                {updateMutation.isPending
+
+                  ? "Updating..."
+
+                  : "Update"}
+
+              </button>
+
             </div>
+
           </>
+
         )}
+
       </Modal>
 
-      {/* DELETE */}
+      {/* DELETE MODAL */}
+
       <Modal
+
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+
+        onClose={() =>
+          setIsDeleteModalOpen(false)
+        }
+
         title="Delete Project"
       >
-        <p>Are you sure you want to delete this project?</p>
+
+        <p>
+
+          Are you sure you want to delete this project?
+
+        </p>
 
         <div className="flex gap-2 mt-3">
+
           <button
-            onClick={() => setIsDeleteModalOpen(false)}
-            className="bg-gray-300 px-4 py-2 rounded"
+
+            onClick={() =>
+              setIsDeleteModalOpen(false)
+            }
+
+            className="
+              bg-gray-300
+              px-4
+              py-2
+              rounded
+            "
           >
+
             Cancel
+
           </button>
 
           <button
-  disabled={deleteMutation.isPending}
-  onClick={() => {
 
-    if (!projectToDelete?.id) return;
+            disabled={
+              deleteMutation.isPending
+            }
 
-    deleteMutation.mutate(projectToDelete.id);
+            onClick={() => {
 
-  }}
-  className="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50"
->
-  {deleteMutation.isPending ? "Deleting..." : "Delete"}
-</button>
+              if (
+                !projectToDelete?.uuid
+              ) return;
+
+              deleteMutation.mutate(
+                projectToDelete.uuid
+              );
+
+            }}
+
+            className="
+              bg-red-600
+              text-white
+              px-4
+              py-2
+              rounded
+              disabled:opacity-50
+            "
+          >
+
+            {deleteMutation.isPending
+
+              ? "Deleting..."
+
+              : "Delete"}
+
+          </button>
+
         </div>
+
       </Modal>
+
     </div>
+
   );
+
 }
