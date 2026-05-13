@@ -1,37 +1,85 @@
 import API from "@/utils/api/fetchclient";
 
-// GET all modules (by project)
-export const getModules = async (projectId: string) => {
-  return API(`/modules/?project=${projectId}`, {
-    method: "GET",
-  });
+// =========================================
+// GET MODULES
+// =========================================
+
+export const getModules = async (
+  projectId: string
+) => {
+
+  return API(
+    `/modules/?project=${projectId}`,
+    {
+      method: "GET",
+    }
+  );
+
 };
 
-// CREATE module
-export const createModule = async (data: any) => {
+// =========================================
+// CREATE MODULE
+// =========================================
+
+export const createModule = async (
+  data: any
+) => {
+
   return API("/modules/", {
+
     method: "POST",
+
     body: JSON.stringify({
+
       name: data.name,
-      project: data.projectId,
+
+      // ✅ FIXED
+      project: data.project,
+
     }),
+
   });
+
 };
 
-// UPDATE module
-export const updateModule = async ({ id, data }: any) => {
-  return API(`/modules/${id}/`, {
-    method: "PUT",
+// =========================================
+// UPDATE MODULE
+// =========================================
+
+export const updateModule = async ({
+  uuid,
+  data,
+}: any) => {
+
+  return API(`/modules/${uuid}/`, {
+
+    method: "PATCH",
+
     body: JSON.stringify({
+
       name: data.name,
-      project: data.projectId,
+
+      // ✅ FIXED
+      project: data.project,
+
     }),
+
   });
+
 };
 
-// DELETE module
-export const deleteModule = async (id: string) => {
-  return API(`/modules/${id}/`, {
+// =========================================
+// DELETE MODULE
+// =========================================
+
+export const deleteModule = async (
+  uuid: string
+) => {
+
+  return API(`/modules/${uuid}/`, {
+
     method: "DELETE",
+
   });
+
 };

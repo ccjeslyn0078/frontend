@@ -1,6 +1,17 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Pencil, Trash2, Plus, FolderKanban } from "lucide-react";
+
+import {
+  useParams,
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  Pencil,
+  Trash2,
+  Plus,
+  FolderKanban,
+} from "lucide-react";
+
 import { ModuleModal } from "../../../components/ModuleModal";
 
 import {
@@ -26,25 +37,58 @@ import {
 } from "@/utils/api/modules.api";
 
 import { useAuth } from "@/context/AuthContext";
+
 import { can } from "@/utils/api/permissions";
 
 export function Modules() {
-  const { projectId } = useParams();
+
+  // ✅ ROUTE PARAM
+  const { projectId } =
+    useParams();
+
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+
+  const queryClient =
+    useQueryClient();
 
   const { user } = useAuth();
+
   const role = user?.role || "";
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingModule, setEditingModule] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] =
+    useState(false);
 
-  const [moduleToDelete, setModuleToDelete] = useState<any>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [editingModule, setEditingModule] =
+    useState<any>(null);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["modules", projectId],
-    queryFn: () => getModules(projectId!),
+  const [moduleToDelete, setModuleToDelete] =
+    useState<any>(null);
+
+  const [
+    isDeleteModalOpen,
+    setIsDeleteModalOpen,
+  ] = useState(false);
+
+  // =========================================
+  // GET MODULES
+  // =========================================
+
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useQuery({
+
+    queryKey: [
+      "modules",
+      projectId,
+    ],
+
+    queryFn: () =>
+      getModules(projectId!),
+
+    enabled: !!projectId,
+
   });
 
   const modules = (
@@ -53,65 +97,135 @@ export function Modules() {
       : data?.results || []
   ).sort(
     (a: any, b: any) =>
-      new Date(a.created_at || 0).getTime() -
-      new Date(b.created_at || 0).getTime()
+      new Date(
+        a.created_at || 0
+      ).getTime() -
+      new Date(
+        b.created_at || 0
+      ).getTime()
   );
 
-  const handleEdit = (module: any) => {
+  // =========================================
+  // EDIT
+  // =========================================
+
+  const handleEdit = (
+    module: any
+  ) => {
+
     setEditingModule(module);
+
     setIsModalOpen(true);
+
   };
+
+  // =========================================
+  // ADD
+  // =========================================
 
   const handleAdd = () => {
+
     setEditingModule(null);
+
     setIsModalOpen(true);
+
   };
+
+  // =========================================
+  // CLOSE MODAL
+  // =========================================
 
   const handleCloseModal = () => {
+
     setIsModalOpen(false);
+
     setEditingModule(null);
+
   };
 
-  const handleModuleClick = (module: any) => {
-    navigate(`/projects/${projectId}/modules/${module.uuid}/screens`);
+  // =========================================
+  // MODULE CLICK
+  // =========================================
+
+  const handleModuleClick = (
+    module: any
+  ) => {
+
+    navigate(
+      `/projects/${projectId}/modules/${module.uuid}/screens`
+    );
+
   };
 
-  // CREATE
+  // =========================================
+  // CREATE MODULE
+  // =========================================
+
   const createMutation = useMutation({
-  mutationFn: createModule,
 
-  onSuccess: async () => {
+    mutationFn: createModule,
 
-    await queryClient.invalidateQueries({
-      queryKey: ["modules", projectId],
-    });
+    onSuccess: async () => {
 
-    handleCloseModal();
-  },
-});
-  // UPDATE
+      await queryClient.invalidateQueries({
+
+        queryKey: [
+          "modules",
+          projectId,
+        ],
+
+      });
+
+      handleCloseModal();
+
+    },
+
+  });
+
+  // =========================================
+  // UPDATE MODULE
+  // =========================================
+
   const updateMutation = useMutation({
-  mutationFn: updateModule,
 
-  onSuccess: async () => {
+    mutationFn: updateModule,
 
-    await queryClient.invalidateQueries({
-      queryKey: ["modules", projectId],
-    });
+    onSuccess: async () => {
 
-    handleCloseModal();
-  },
-});
+      await queryClient.invalidateQueries({
 
-  // DELETE
+        queryKey: [
+          "modules",
+          projectId,
+        ],
+
+      });
+
+      handleCloseModal();
+
+    },
+
+  });
+
+  // =========================================
+  // DELETE MODULE
+  // =========================================
+
   const deleteMutation = useMutation({
+
     mutationFn: deleteModule,
 
-    onSuccess: (_, deletedId) => {
+    onSuccess: (
+      _,
+      deletedUuid
+    ) => {
 
       queryClient.setQueryData(
+
         ["modules", projectId],
+
         (old: any) => {
+
           if (!old) return old;
 
           const filtered = (
@@ -119,96 +233,184 @@ export function Modules() {
               ? old
               : old.results
           ).filter(
-            (mod: any) => mod.uuid !== deletedId
+            (mod: any) =>
+              mod.uuid !== deletedUuid
           );
 
           return Array.isArray(old)
             ? filtered
-            : { ...old, results: filtered };
+            : {
+                ...old,
+                results: filtered,
+              };
+
         }
       );
 
       setIsDeleteModalOpen(false);
+
       setModuleToDelete(null);
+
     },
+
   });
 
+  // =========================================
+  // LOADER
+  // =========================================
+
   const isAnyLoading =
+
     createMutation.isPending ||
+
     updateMutation.isPending ||
+
     deleteMutation.isPending;
 
-  if (isLoading) {
-    return <div className="p-6">Loading modules...</div>;
-  }
+  // =========================================
+  // PAGE LOADING
+  // =========================================
 
-  if (isError) {
+  if (isLoading) {
+
     return (
-      <div className="p-6 text-red-500">
-        Failed to load modules
+      <div className="p-6">
+        Loading modules...
       </div>
     );
+
+  }
+
+  // =========================================
+  // PAGE ERROR
+  // =========================================
+
+  if (isError) {
+
+    return (
+
+      <div className="p-6 text-red-500">
+
+        Failed to load modules
+
+      </div>
+
+    );
+
   }
 
   return (
+
     <div className="p-8">
 
       {/* GLOBAL LOADER */}
+
       {isAnyLoading && (
+
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] flex items-center justify-center">
+
           <div className="w-16 h-16 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+
         </div>
+
       )}
 
-      {/* Breadcrumb */}
+      {/* BREADCRUMB */}
+
       <Breadcrumb className="mb-4">
+
         <BreadcrumbList>
 
           <BreadcrumbItem>
+
             <BreadcrumbLink href="/projects">
+
               Projects
+
             </BreadcrumbLink>
+
           </BreadcrumbItem>
 
           <BreadcrumbSeparator />
 
           <BreadcrumbItem>
+
             <BreadcrumbPage>
+
               Modules
+
             </BreadcrumbPage>
+
           </BreadcrumbItem>
 
         </BreadcrumbList>
+
       </Breadcrumb>
 
       {/* HEADER */}
+
       <div className="flex justify-between mb-6">
 
         <h1 className="text-2xl font-semibold">
+
           Modules
+
         </h1>
 
-        {can(role, "modules", "create") && (
+        {can(
+          role,
+          "modules",
+          "create"
+        ) && (
+
           <button
+
             onClick={handleAdd}
-            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2 cursor-pointer"
+
+            className="
+              bg-blue-600
+              text-white
+              px-4
+              py-2
+              rounded
+              flex
+              items-center
+              gap-2
+              cursor-pointer
+            "
           >
+
             <Plus className="w-4 h-4" />
+
             Add Module
+
           </button>
+
         )}
 
       </div>
 
       {/* GRID */}
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
         {modules.map((module: any) => (
 
           <div
+
             key={module.uuid}
-            onClick={() => handleModuleClick(module)}
-            className="border p-5 rounded cursor-pointer hover:shadow"
+
+            onClick={() =>
+              handleModuleClick(module)
+            }
+
+            className="
+              border
+              p-5
+              rounded
+              cursor-pointer
+              hover:shadow
+            "
           >
 
             <div className="flex justify-between mb-2">
@@ -218,79 +420,144 @@ export function Modules() {
               <div className="flex gap-2">
 
                 {/* EDIT */}
-                {can(role, "modules", "update") && (
+
+                {can(
+                  role,
+                  "modules",
+                  "update"
+                ) && (
+
                   <button
-                  className="cursor-pointer"
+
+                    className="cursor-pointer"
+
                     onClick={(e) => {
+
                       e.stopPropagation();
+
                       handleEdit(module);
+
                     }}
                   >
+
                     <Pencil className="w-4 h-4 text-blue-500" />
+
                   </button>
+
                 )}
 
                 {/* DELETE */}
-                {can(role, "modules", "delete") && (
+
+                {can(
+                  role,
+                  "modules",
+                  "delete"
+                ) && (
+
                   <button
-                  className="cursor-pointer"
+
+                    className="cursor-pointer"
+
                     onClick={(e) => {
+
                       e.stopPropagation();
 
                       setModuleToDelete(module);
+
                       setIsDeleteModalOpen(true);
+
                     }}
                   >
+
                     <Trash2 className="w-4 h-4 text-red-500" />
+
                   </button>
+
                 )}
 
               </div>
+
             </div>
 
             <h3 className="font-semibold">
+
               {module.name}
+
             </h3>
 
             <p className="text-xs text-gray-500 mt-2">
-              Project: {module.project}
+
+              Project:
+              {" "}
+              {module.project}
+
             </p>
 
           </div>
+
         ))}
 
       </div>
 
       {/* CREATE / EDIT MODAL */}
+
       <ModuleModal
+
         isOpen={isModalOpen}
+
         onClose={handleCloseModal}
+
         module={editingModule}
+
         projectId={projectId!}
+
         onSubmit={(data: any) => {
+
+          // =========================================
+          // UPDATE
+          // =========================================
 
           if (editingModule) {
 
             updateMutation.mutate({
-              id: editingModule.uuid,
+
+              uuid: editingModule.uuid,
+
               data: {
+
                 ...data,
-                projectId,
+
+                // ✅ IMPORTANT
+                project: projectId,
+
               },
-            });
 
-          } else {
-
-            createMutation.mutate({
-              ...data,
-              projectId,
             });
 
           }
+
+          // =========================================
+          // CREATE
+          // =========================================
+
+          else {
+
+            createMutation.mutate({
+
+              ...data,
+
+              // ✅ IMPORTANT
+              project: projectId,
+
+            });
+
+          }
+
         }}
       />
 
       {/* DELETE MODAL */}
+
       {isDeleteModalOpen && (
 
         <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/20 z-50">
@@ -298,34 +565,64 @@ export function Modules() {
           <div className="bg-white rounded-lg p-6 w-[400px] shadow-lg">
 
             <h2 className="text-lg font-semibold mb-3">
+
               Delete Module
+
             </h2>
 
             <p className="text-gray-600 mb-5">
+
               Are you sure you want to delete this module?
+
             </p>
 
             <div className="flex justify-end gap-3">
 
               <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+
+                onClick={() =>
+                  setIsDeleteModalOpen(false)
+                }
+
+                className="
+                  px-4
+                  py-2
+                  bg-gray-200
+                  rounded
+                  hover:bg-gray-300
+                "
               >
+
                 Cancel
+
               </button>
 
               <button
+
                 onClick={() => {
 
-                  if (!moduleToDelete?.uuid) return;
+                  if (
+                    !moduleToDelete?.uuid
+                  ) return;
 
                   deleteMutation.mutate(
                     moduleToDelete.uuid
                   );
+
                 }}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+
+                className="
+                  px-4
+                  py-2
+                  bg-red-600
+                  text-white
+                  rounded
+                  hover:bg-red-700
+                "
               >
+
                 Delete
+
               </button>
 
             </div>
@@ -333,8 +630,11 @@ export function Modules() {
           </div>
 
         </div>
+
       )}
 
     </div>
+
   );
+
 }

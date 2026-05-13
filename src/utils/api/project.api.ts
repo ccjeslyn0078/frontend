@@ -19,19 +19,36 @@ export const createProject = async (data: any) => {
 };
 
 // UPDATE
-export const updateProject = async ({ id, data }: any) => {
-  return API(`/projects/${id}/`, {
-    method: "PUT",
+export const updateProject = async ({
+  uuid,
+  data,
+}: any) => {
+
+  return API(`/projects/${uuid}/`, {
+
+    method: "PATCH",
+
     body: JSON.stringify({
+
       title: data.title,
+
       description: data.description,
+
     }),
+
   });
+
 };
 
 // DELETE
-export const deleteProject = async (id: string) => {
-  return API(`/projects/${id}/`, {
+export const deleteProject = async (
+  uuid: string
+) => {
+
+  return API(`/projects/${uuid}/`, {
+
     method: "DELETE",
+
   });
+
 };
