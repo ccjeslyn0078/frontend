@@ -41,9 +41,11 @@ export const updateProject = async ({
 };
 
 // DELETE
-export const deleteProject = async (
-  uuid: string
-) => {
+export const deleteProject = async ({
+  uuid,
+}: {
+  uuid: string;
+}) => {
 
   return API(`/projects/${uuid}/`, {
 

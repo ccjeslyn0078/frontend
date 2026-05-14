@@ -172,9 +172,9 @@ export function ProjectsPage() {
       mutationFn: deleteProject,
 
       onSuccess: async (
-        _,
-        deletedUuid
-      ) => {
+  _,
+  deletedUuid
+) => {
 
         await queryClient.setQueryData(
 
@@ -191,7 +191,7 @@ export function ProjectsPage() {
             ).filter(
 
               (proj: any) =>
-                proj.uuid !== deletedUuid
+                proj.uuid !== deletedUuid.uuid
 
             );
 
@@ -773,9 +773,9 @@ export function ProjectsPage() {
                 !projectToDelete?.uuid
               ) return;
 
-              deleteMutation.mutate(
-                projectToDelete.uuid
-              );
+              deleteMutation.mutate({
+  uuid: projectToDelete.uuid,
+});
 
             }}
 

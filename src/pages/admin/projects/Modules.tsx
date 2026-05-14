@@ -480,18 +480,8 @@ export function Modules() {
             </div>
 
             <h3 className="font-semibold">
-
-              {module.name}
-
-            </h3>
-
-            <p className="text-xs text-gray-500 mt-2">
-
-              Project:
-              {" "}
-              {module.project}
-
-            </p>
+  {module.name}
+</h3>
 
           </div>
 
