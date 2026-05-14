@@ -27,7 +27,11 @@ const API = async (
     }
   );
 
-  const data = await response.json();
+  let data = null;
+
+const text = await response.text();
+
+data = text ? JSON.parse(text) : null;
 
   console.log(
     "API RESPONSE:",
