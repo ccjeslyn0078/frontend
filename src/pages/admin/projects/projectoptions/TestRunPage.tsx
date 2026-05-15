@@ -144,71 +144,137 @@ export default function TestRun() {
     ? runsData
     : runsData?.results || [];
 
+    useEffect(() => {
+
+  if (testRuns.length > 0) {
+
+    const formatted: any = {};
+
+    testRuns.forEach((tc: any) => {
+
+      formatted[tc.uuid] = {
+
+        pass: tc.run_status === "passed",
+
+        fail: tc.run_status === "failed",
+
+        actual: tc.actual_result || "",
+
+      };
+
+    });
+
+    setTestResults(formatted);
+
+  }
+
+}, [testRuns]);
+
   // =========================================
   // PASS
   // =========================================
 
-  const handlePassChange = (
-    tcId: string,
-    checked: boolean
-  ) => {
+  const handlePassChange = async (
+  tcId: string,
+  checked: boolean
+) => {
 
-    setTestResults((prev: any) => ({
+  setTestResults((prev: any) => ({
 
-      ...prev,
+    ...prev,
 
-      [tcId]: {
+    [tcId]: {
 
-        ...prev[tcId],
+      ...prev[tcId],
 
-        pass: checked,
+      pass: checked,
 
-        fail: checked
-          ? false
-          : prev[tcId]?.fail,
+      fail: false,
+
+    },
+
+  }));
+
+  try {
+
+    await updateTestRun({
+
+      uuid: tcId,
+
+      data: {
+
+        run_status: checked
+          ? "passed"
+          : "not_started",
 
       },
 
-    }));
+    });
 
-  };
+  } catch (err) {
+
+    console.error(err);
+
+  }
+
+};
 
   // =========================================
   // FAIL
   // =========================================
 
-  const handleFailChange = (
-    tc: any,
-    checked: boolean
-  ) => {
+  const handleFailChange = async (
+  tc: any,
+  checked: boolean
+) => {
 
-    setTestResults((prev: any) => ({
+  setTestResults((prev: any) => ({
 
-      ...prev,
+    ...prev,
 
-      [tc.uuid]: {
+    [tc.uuid]: {
 
-        ...prev[tc.uuid],
+      ...prev[tc.uuid],
 
-        pass: checked
-          ? false
-          : prev[tc.uuid]?.pass,
+      pass: false,
 
-        fail: checked,
+      fail: checked,
+
+    },
+
+  }));
+
+  try {
+
+    await updateTestRun({
+
+      uuid: tc.uuid,
+
+      data: {
+
+        run_status: checked
+          ? "failed"
+          : "not_started",
 
       },
 
-    }));
+    });
 
-    if (checked) {
+  } catch (err) {
 
-      setSelectedTestCase(tc);
+    console.error(err);
 
-      setBugModalOpen(true);
+  }
 
-    }
+  if (checked) {
 
-  };
+    setSelectedTestCase(tc);
+
+    setBugModalOpen(true);
+
+  }
+
+};
 
   // =========================================
   // ACTUAL
@@ -615,19 +681,7 @@ export default function TestRun() {
                       uuid: selectedTc.uuid,
 
                       data: {
-
-                        run_status:
-                          testResults[
-                            selectedTc.uuid
-                          ]?.fail
-                            ? "failed"
-                            : testResults[
-                                selectedTc.uuid
-                              ]?.pass
-                            ? "passed"
-                            : "not_started",
-
-                        actual_result:
+                          actual_result:
                           actualValue,
 
                         notes:
