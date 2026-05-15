@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+
 import { Link, useParams } from "react-router-dom";
+
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import API from "@/utils/api/fetchclient";
 
@@ -28,7 +35,6 @@ import {
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -36,14 +42,14 @@ import {
 
 const TestRunVersions = () => {
 
+  const queryClient =
+    useQueryClient();
+
   const {
     projectId,
     moduleId,
     screenId,
   } = useParams();
-
-  const [versions, setVersions] =
-    useState<any[]>([]);
 
   const [projects, setProjects] =
     useState<any[]>([]);
@@ -88,41 +94,167 @@ const TestRunVersions = () => {
     });
 
   // =========================================
-  // INITIAL LOAD
+  // GET VERSIONS
   // =========================================
 
-  useEffect(() => {
+const {
+  data,
+  isLoading,
+} = useQuery({
 
-    fetchVersions();
+  queryKey: [
+    "testrunversions",
+    screenId,
+  ],
 
-    fetchProjects();
+  queryFn: () =>
+    getTestRunVersions(),
 
-  }, []);
+  staleTime:
+    1000 * 60 * 5,
+
+  refetchOnWindowFocus:
+    false,
+
+});
+
+const versions =
+  Array.isArray(data)
+    ? data
+    : data?.results || [];
 
   // =========================================
-  // FETCH VERSIONS
+  // CREATE MUTATION
   // =========================================
 
-  const fetchVersions = async () => {
+  const createMutation =
+    useMutation({
 
-    try {
+      mutationFn:
+        createTestRunVersion,
 
-      const res =
-        await getTestRunVersions();
+      onSuccess: () => {
 
-      setVersions(
-        Array.isArray(res)
-          ? res
-          : res?.results || []
-      );
+        queryClient.invalidateQueries({
 
-    } catch (err) {
+          queryKey: [
+            "testrunversions",
+          ],
 
-      console.log(err);
+        });
 
-    }
+        resetForm();
 
-  };
+      },
+
+    });
+
+  // =========================================
+  // UPDATE MUTATION
+  // =========================================
+
+  const updateMutation =
+    useMutation({
+
+      mutationFn:
+        updateTestRunVersion,
+
+      onSuccess: () => {
+
+        queryClient.invalidateQueries({
+
+          queryKey: [
+            "testrunversions",
+          ],
+
+        });
+
+        alert(
+          "Version Updated Successfully"
+        );
+
+        resetForm();
+
+      },
+
+    });
+
+  // =========================================
+  // DELETE MUTATION
+  // =========================================
+
+  const deleteMutation =
+    useMutation({
+
+      mutationFn:
+        deleteTestRunVersion,
+
+      onMutate: async (
+        uuid: string
+      ) => {
+
+        await queryClient.cancelQueries({
+
+          queryKey: [
+            "testrunversions",
+          ],
+
+        });
+
+        const previousVersions =
+          queryClient.getQueryData([
+            "testrunversions",
+            screenId,
+          ]);
+
+        queryClient.setQueryData(
+          [
+            "testrunversions",
+            screenId,
+          ],
+          (old: any) =>
+
+            old?.filter(
+              (v: any) =>
+                v.uuid !== uuid
+            ) || []
+        );
+
+        return {
+          previousVersions,
+        };
+
+      },
+
+      onError: (
+        err,
+        uuid,
+        context: any
+      ) => {
+
+        queryClient.setQueryData(
+          [
+            "testrunversions",
+            screenId,
+          ],
+          context.previousVersions
+        );
+
+      },
+
+      onSettled: () => {
+
+        queryClient.invalidateQueries({
+
+          queryKey: [
+            "testrunversions",
+          ],
+
+        });
+
+      },
+
+    });
 
   // =========================================
   // FETCH PROJECTS
@@ -257,25 +389,12 @@ const TestRunVersions = () => {
 
     try {
 
-      await createTestRunVersion({
+    createMutation.mutate({
 
-        screen:
-          formData.screen,
+  screen:
+    formData.screen,
 
-        version_number:
-          formData.version_number,
-
-        version_status:
-          formData.version_status,
-
-        notes:
-          formData.notes,
-
-      });
-
-      await fetchVersions();
-
-      resetForm();
+});
 
     } catch (err) {
 
@@ -297,7 +416,7 @@ const TestRunVersions = () => {
 
     try {
 
-      await updateTestRunVersion({
+      updateMutation.mutate({
 
         uuid:
           editingVersionId,
@@ -319,14 +438,6 @@ const TestRunVersions = () => {
         },
 
       });
-
-      await fetchVersions();
-
-      alert(
-        "Version Updated Successfully"
-      );
-
-      resetForm();
 
     } catch (err) {
 
@@ -355,39 +466,9 @@ const TestRunVersions = () => {
 
     if (!confirmDelete) return;
 
-    // optimistic UI
-    setVersions((prev) =>
-      prev.filter(
-        (v) => v.uuid !== uuid
-      )
+    deleteMutation.mutate(
+      uuid
     );
-
-    try {
-
-      await deleteTestRunVersion(
-        uuid
-      );
-
-    } catch (err: any) {
-
-      console.log(err);
-
-      // ignore delete 204 parse issue
-      if (
-        err?.message?.includes(
-          "Unexpected end of JSON input"
-        )
-      ) {
-
-        return;
-
-      }
-
-      alert("Delete failed");
-
-      fetchVersions();
-
-    }
 
   };
 
@@ -395,14 +476,29 @@ const TestRunVersions = () => {
   // FILTERED DATA
   // =========================================
 
-  const filteredVersions =
-    versions.filter((version) =>
-      version.version_number
-        ?.toLowerCase()
-        .includes(
-          search.toLowerCase()
-        )
+ const filteredVersions =
+  Array.isArray(versions)
+    ? versions.filter(
+        (version: any) =>
+          version.version_number
+            ?.toLowerCase()
+            .includes(
+              search.toLowerCase()
+            )
+      )
+    : [];
+
+  if (isLoading) {
+
+    return (
+
+      <div className="p-8">
+        Loading...
+      </div>
+
     );
+
+  }
 
   return (
 
@@ -478,8 +574,6 @@ const TestRunVersions = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
 
-        {/* TOTAL */}
-
         <div className="bg-white rounded-3xl p-6 shadow-sm border">
 
           <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center mb-5">
@@ -498,8 +592,6 @@ const TestRunVersions = () => {
 
         </div>
 
-        {/* PUBLISHED */}
-
         <div className="bg-white rounded-3xl p-6 shadow-sm border">
 
           <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center mb-5">
@@ -512,7 +604,7 @@ const TestRunVersions = () => {
 
             {
               versions.filter(
-                (v) =>
+                (v: any) =>
                   v.version_status ===
                   "published"
               ).length
@@ -526,8 +618,6 @@ const TestRunVersions = () => {
 
         </div>
 
-        {/* DRAFT */}
-
         <div className="bg-white rounded-3xl p-6 shadow-sm border">
 
           <div className="w-14 h-14 rounded-2xl bg-yellow-100 flex items-center justify-center mb-5">
@@ -540,7 +630,7 @@ const TestRunVersions = () => {
 
             {
               versions.filter(
-                (v) =>
+                (v: any) =>
                   v.version_status ===
                   "draft"
               ).length
@@ -554,8 +644,6 @@ const TestRunVersions = () => {
 
         </div>
 
-        {/* EXECUTIONS */}
-
         <div className="bg-white rounded-3xl p-6 shadow-sm border">
 
           <div className="w-14 h-14 rounded-2xl bg-purple-100 flex items-center justify-center mb-5">
@@ -565,7 +653,19 @@ const TestRunVersions = () => {
           </div>
 
           <h2 className="text-3xl font-bold">
-            248
+            {
+              versions.reduce(
+                (
+                  sum: number,
+                  version: any
+                ) =>
+                  sum +
+                  (
+                    version.total_executions || 0
+                  ),
+                0
+              )
+            }
           </h2>
 
           <p className="text-gray-500 mt-2">
@@ -608,9 +708,11 @@ const TestRunVersions = () => {
         ) && (
 
           <button
-            onClick={() => {
+            onClick={async () => {
 
               resetForm();
+
+              await fetchProjects();
 
               setOpenModal(true);
 
@@ -659,22 +761,16 @@ const TestRunVersions = () => {
             {filteredVersions.length > 0 ? (
 
               filteredVersions.map(
-                (version) => (
+                (version: any) => (
 
                   <tr
                     key={version.uuid}
                     className="border-t hover:bg-gray-50"
                   >
 
-                    {/* VERSION */}
-
                     <td className="px-6 py-5 font-medium">
-
                       {version.version_number}
-
                     </td>
-
-                    {/* STATUS */}
 
                     <td className="px-6 py-5">
 
@@ -693,8 +789,6 @@ const TestRunVersions = () => {
 
                     </td>
 
-                    {/* DATE */}
-
                     <td className="px-6 py-5">
 
                       {new Date(
@@ -703,13 +797,9 @@ const TestRunVersions = () => {
 
                     </td>
 
-                    {/* ACTIONS */}
-
                     <td className="px-6 py-5">
 
                       <div className="flex gap-4">
-
-                        {/* EDIT */}
 
                         {can(
                           role!,
@@ -769,8 +859,6 @@ const TestRunVersions = () => {
                           </button>
 
                         )}
-
-                        {/* DELETE */}
 
                         {can(
                           role!,
@@ -837,8 +925,6 @@ const TestRunVersions = () => {
 
           <div className="bg-white rounded-3xl w-[900px] max-w-[95vw] p-8 shadow-xl">
 
-            {/* HEADER */}
-
             <div className="flex justify-between items-center mb-8">
 
               <h2 className="text-2xl font-bold">
@@ -858,11 +944,7 @@ const TestRunVersions = () => {
 
             </div>
 
-            {/* FORM */}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-              {/* PROJECT */}
 
               <select
                 className="border rounded-xl p-4"
@@ -895,7 +977,7 @@ const TestRunVersions = () => {
                   Select Project
                 </option>
 
-                {projects.map((project) => (
+                {projects.map((project: any) => (
 
                   <option
                     key={project.uuid}
@@ -909,8 +991,6 @@ const TestRunVersions = () => {
                 ))}
 
               </select>
-
-              {/* MODULE */}
 
               <select
                 className="border rounded-xl p-4"
@@ -941,7 +1021,7 @@ const TestRunVersions = () => {
                   Select Module
                 </option>
 
-                {modules.map((module) => (
+                {modules.map((module: any) => (
 
                   <option
                     key={module.uuid}
@@ -955,8 +1035,6 @@ const TestRunVersions = () => {
                 ))}
 
               </select>
-
-              {/* SCREEN */}
 
               <select
                 className="border rounded-xl p-4"
@@ -979,7 +1057,7 @@ const TestRunVersions = () => {
                   Select Screen
                 </option>
 
-                {screens.map((screen) => (
+                {screens.map((screen: any) => (
 
                   <option
                     key={screen.uuid}
@@ -993,8 +1071,6 @@ const TestRunVersions = () => {
                 ))}
 
               </select>
-
-              {/* VERSION NUMBER */}
 
               <input
                 type="text"
@@ -1014,8 +1090,6 @@ const TestRunVersions = () => {
 
                 }
               />
-
-              {/* STATUS */}
 
               <select
                 className="border rounded-xl p-4"
@@ -1046,8 +1120,6 @@ const TestRunVersions = () => {
 
             </div>
 
-            {/* NOTES */}
-
             <textarea
               placeholder="Notes"
               className="border rounded-xl p-4 w-full mt-5 h-32"
@@ -1065,8 +1137,6 @@ const TestRunVersions = () => {
 
               }
             />
-
-            {/* ACTION BUTTONS */}
 
             <div className="flex justify-end gap-4 mt-8">
 

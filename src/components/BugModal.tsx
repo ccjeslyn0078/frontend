@@ -84,14 +84,48 @@ export function BugModal({
           {/* CREATE */}
           <button
             onClick={async () => {
-              await createBug({
-                ...form,
-                actual_results: actualResult,
-                project: projectId,
-                module: moduleId,
-                screen: screenId,
-                test_case: testCase?.uuid,
-              });
+              try {
+
+  const payload = {
+
+    description:
+      form.description || "Bug reported",
+
+    steps_to_reproduce:
+      form.steps_to_reproduce || "No steps provided",
+
+    expected_results:
+      form.expected_results ||
+      testCase?.expected_results ||
+      "Expected result not provided",
+
+    actual_result:
+      actualResult ||
+      "Actual result not provided",
+
+    severity:
+      form.severity || "medium",
+
+    project: projectId,
+
+    module: moduleId,
+
+    screen: screenId,
+
+    testcase: testCase?.testcase,
+  };
+
+  console.log("BUG PAYLOAD:", payload);
+
+  await createBug(payload);
+
+  onClose();
+
+} catch (err) {
+
+  console.error("BUG CREATE ERROR:", err);
+
+}
 
               onClose();
             }}
