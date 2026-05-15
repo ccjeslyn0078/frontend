@@ -1,4 +1,6 @@
 import { Routes, Route } from "react-router-dom";
+import DashboardPage from "../pages/admin/dashboard/dashboardpage";
+import { QALeadDashboard } from "@/components/features/dashboard/QALeadDashboard";
 import { ProjectsPage } from "@/pages/admin/projects/ProjectsPage";
 import Layout from "@/components/layout/AppLayout";
 import { Modules } from "@/pages/admin/projects/Modules";
@@ -8,17 +10,18 @@ import TestRunPage from "@/pages/admin/projects/projectoptions/TestRunPage";
 import BugsPage from "@/pages/admin/projects/projectoptions/BugsPage";
 import TestRunVersions from "@/pages/admin/projects/projectoptions/TestRunVersions";
 
-function Dashboard() {
-  return <div className="p-6 text-gray-700">Dashboard</div>;
-}
-
 export default function AdminRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
 
         {/* Dashboard */}
-        <Route index element={<Dashboard />} />
+        <Route index element={<DashboardPage />} />
+
+        <Route
+  path="analytics"
+  element={<QALeadDashboard />}
+/>
 
         {/* Projects list */}
         <Route path="projects" element={<ProjectsPage />} />

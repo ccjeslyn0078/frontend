@@ -5,7 +5,8 @@ import {
   FileText,
   CheckSquare,
   Settings as SettingsIcon,
-  LogOut
+  LogOut,
+  BarChart3
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
@@ -84,6 +85,19 @@ export default function Sidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: Sideb
           <CheckSquare className="w-5 h-5" />
           Test Case Status
         </Link>
+
+        <Link
+  to="/analytics"
+  onClick={() => setIsMobileMenuOpen(false)}
+  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg ${
+    isActive("/analytics")
+      ? "bg-blue-50 text-blue-600"
+      : "text-gray-700 hover:bg-gray-50"
+  }`}
+>
+  <BarChart3 className="w-5 h-5" />
+  Analytics
+</Link>
 
         <Link
           to="/settings"
