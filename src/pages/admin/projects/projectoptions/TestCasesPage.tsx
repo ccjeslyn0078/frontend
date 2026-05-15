@@ -132,10 +132,47 @@ const removeStep = (index: number) => {
 });
  
   const deleteMutation = useMutation({
-    mutationFn: deleteTestCase,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["testcases", screenId] }),
-  });
+  mutationFn: deleteTestCase,
+
+  onMutate: async (deletedUuid: string) => {
+    await queryClient.cancelQueries({
+      queryKey: ["testcases", screenId],
+    });
+
+    const previousTestcases =
+      queryClient.getQueryData([
+        "testcases",
+        screenId,
+      ]);
+
+    queryClient.setQueryData(
+      ["testcases", screenId],
+      (old: any) => {
+        if (!old) return [];
+
+        // ✅ your API returns direct array
+        return old.filter(
+          (tc: any) => tc.uuid !== deletedUuid
+        );
+      }
+    );
+
+    return { previousTestcases };
+  },
+
+  onError: (_err, _deletedUuid, context) => {
+    queryClient.setQueryData(
+      ["testcases", screenId],
+      context?.previousTestcases
+    );
+  },
+
+  onSettled: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["testcases", screenId],
+    });
+  },
+});
  
   const filtered = [...testcases]
   .sort(
@@ -637,47 +674,81 @@ queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
   {editingTestCase && (
     <>
       {/* TITLE */}
-      <input
-        placeholder="Title"
-        className="border p-2 w-full mb-2"
-        value={editingTestCase.title || ""}
-        onChange={(e) =>
-          setEditingTestCase({ ...editingTestCase, title: e.target.value })
-        }
-      />
- 
-      {/* DESCRIPTION */}
-      <textarea
-        placeholder="Description"
-        className="border p-2 w-full mb-2"
-        value={editingTestCase.description || ""}
-        onChange={(e) =>
-          setEditingTestCase({
-            ...editingTestCase,
-            description: e.target.value,
-          })
-        }
-      />
- 
-      {/* 🔥 STEPS (WORKING SAME AS CREATE) */}
       <div className="mb-4">
-        <label className="font-medium">Steps:</label>
- 
+        <label className="block mb-1 font-medium">
+          Title
+        </label>
+
+        <input
+          placeholder="Enter title"
+          className="border p-2 w-full rounded"
+          value={editingTestCase.title || ""}
+          onChange={(e) =>
+            setEditingTestCase({
+              ...editingTestCase,
+              title: e.target.value,
+            })
+          }
+        />
+      </div>
+
+      {/* DESCRIPTION */}
+      <div className="mb-4">
+        <label className="block mb-1 font-medium">
+          Description
+        </label>
+
+        <textarea
+          placeholder="Enter description"
+          className="border p-2 w-full rounded"
+          value={editingTestCase.description || ""}
+          onChange={(e) =>
+            setEditingTestCase({
+              ...editingTestCase,
+              description: e.target.value,
+            })
+          }
+        />
+      </div>
+
+      {/* STEPS */}
+      <div className="mb-4">
+        <label className="block mb-2 font-medium">
+          Steps
+        </label>
+
         {steps.map((step, index) => (
-          <div key={index} className="flex items-center gap-2 mb-2">
-            <span className="w-16">Step {index + 1}:</span>
- 
+          <div
+            key={index}
+            className="flex items-center gap-2 mb-2"
+          >
+            <span className="w-16">
+              Step {index + 1}:
+            </span>
+
             <input
               value={step || ""}
-              onChange={(e) => handleStepChange(index, e.target.value)}
-              className="border p-2 w-full"
+              onChange={(e) =>
+                handleStepChange(index, e.target.value)
+              }
+              className="border p-2 w-full rounded"
             />
- 
+
+            {/* REMOVE BUTTON */}
+            <button
+              type="button"
+              onClick={() => removeStep(index)}
+              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              x
+            </button>
+
+            {/* ADD BUTTON */}
             {index === steps.length - 1 && (
               <button
-                onClick={addStep}
                 type="button"
-                className="px-2 py-1 border rounded hover:bg-gray-100"
+                onClick={addStep}
+                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 +
               </button>
@@ -685,83 +756,103 @@ queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
           </div>
         ))}
       </div>
- 
+
       {/* EXPECTED RESULTS */}
-      <textarea
-        placeholder="Expected Results"
-        className="border p-2 w-full mb-2"
-        value={editingTestCase.expected_results || ""}
-        onChange={(e) =>
-          setEditingTestCase({
-            ...editingTestCase,
-            expected_results: e.target.value,
-          })
-        }
-      />
- 
+      <div className="mb-4">
+        <label className="block mb-1 font-medium">
+          Expected Results
+        </label>
+
+        <textarea
+          placeholder="Enter expected results"
+          className="border p-2 w-full rounded"
+          value={editingTestCase.expected_results || ""}
+          onChange={(e) =>
+            setEditingTestCase({
+              ...editingTestCase,
+              expected_results: e.target.value,
+            })
+          }
+        />
+      </div>
+
       {/* PRIORITY */}
-      <select
-        className="border p-2 w-full mb-2"
-        value={editingTestCase.priority}
-        onChange={(e) =>
-          setEditingTestCase({
-            ...editingTestCase,
-            priority: e.target.value,
-          })
-        }
-      >
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
-      </select>
- 
+      <div className="mb-4">
+        <label className="block mb-1 font-medium">
+          Priority
+        </label>
+
+        <select
+          className="border p-2 w-full rounded"
+          value={editingTestCase.priority}
+          onChange={(e) =>
+            setEditingTestCase({
+              ...editingTestCase,
+              priority: e.target.value,
+            })
+          }
+        >
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+
       {/* TYPE */}
-      <select
-        className="border p-2 w-full mb-2"
-        value={editingTestCase.type_of_testcase}
-        onChange={(e) =>
-          setEditingTestCase({
-            ...editingTestCase,
-            type_of_testcase: e.target.value,
-          })
-        }
-      >
-        <option value="functional">Functional</option>
-        <option value="regression">Regression</option>
-        <option value="smoke">Smoke</option>
-      </select>
- 
- 
-     
- 
+      <div className="mb-4">
+        <label className="block mb-1 font-medium">
+          Type
+        </label>
+
+        <select
+          className="border p-2 w-full rounded"
+          value={editingTestCase.type_of_testcase}
+          onChange={(e) =>
+            setEditingTestCase({
+              ...editingTestCase,
+              type_of_testcase: e.target.value,
+            })
+          }
+        >
+          <option value="functional">Functional</option>
+          <option value="regression">Regression</option>
+          <option value="smoke">Smoke</option>
+        </select>
+      </div>
+
       {/* UPDATE BUTTON */}
       <button
         disabled={updateMutation.isPending}
         onClick={() => {
           if (!editingTestCase) return;
- 
+
           updateMutation.mutate({
-  id: editingTestCase.uuid,
-  data: {
-    ...editingTestCase,  // ✅ ensures all required fields are sent
- 
-    // 🔥 clean steps properly
-    steps: (steps || [])
-  .map((s) => (s || "").trim())
-  .filter((s) => s.length > 0)
-  .reduce((acc: any, step, index) => {
-    acc[`Step ${index + 1}`] = step;
-    return acc;
-  }, {}),
- 
-    // ✅ override screen explicitly (important)
-    screen: screenId,
-  },
-});
+            uuid: editingTestCase.uuid,
+            data: {
+              title: editingTestCase.title,
+              description: editingTestCase.description,
+              expected_results: editingTestCase.expected_results,
+              priority: editingTestCase.priority,
+              type_of_testcase:
+                editingTestCase.type_of_testcase,
+
+              steps: (steps || [])
+                .map((s) => (s || "").trim())
+                .filter((s) => s.length > 0)
+                .reduce((acc: any, step, index) => {
+                  acc[`step ${index + 1}`] = step;
+                  return acc;
+                }, {}),
+
+              screen: screenId,
+            },
+          });
         }}
-        className="bg-blue-600 text-white px-4 py-2 rounded"
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
       >
-        {updateMutation.isPending ? "Updating..." : "Update"}
+        {updateMutation.isPending
+          ? "Updating..."
+          : "Update"}
       </button>
     </>
   )}

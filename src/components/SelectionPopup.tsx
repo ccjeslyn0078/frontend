@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { ClipboardList, Play, Bug } from 'lucide-react';
+import { ClipboardList, Play, Bug, Layers3 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 
 interface SelectionPopupProps {
@@ -40,6 +40,16 @@ export function SelectionPopup({
       iconBg: 'bg-green-100',
       path: `/projects/${projectId}/modules/${moduleId}/screens/${screenId}/test-run`,
     },
+
+    {
+  title: 'Versions',
+  description: 'Create and manage test run versions',
+  icon: Layers3,
+  color: 'bg-purple-500',
+  hoverColor: 'hover:bg-purple-50',
+  iconBg: 'bg-purple-100',
+  path: `/projects/${projectId}/modules/${moduleId}/screens/${screenId}/versions`,
+},
     {
       title: 'Bugs',
       description: 'View and track bugs',

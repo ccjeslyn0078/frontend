@@ -45,7 +45,7 @@ export default function BugsPage() {
     steps_to_reproduce: "",
     severity: "medium",
     expected_results: "",
-    actual_results: "",
+    actual_result: "",
   });
 
   const [editingBug, setEditingBug] = useState<any>(null);
@@ -185,7 +185,7 @@ const removeStep = (index: number) => {
                   <td className="px-4 py-3">{bug.uuid.slice(0, 6)}</td>
 
                   <td className="px-4 py-3">
-                    {bug.test_case ? bug.test_case.slice(0, 6) : "-"}
+                    {bug.testcase ? bug.testcase.slice(0, 6) : "-"}
                   </td>
 
                   <td className="px-4 py-3 font-medium">
@@ -210,7 +210,7 @@ const removeStep = (index: number) => {
 
                   <td className="px-4 py-3 max-w-xs">
                     <p className="text-sm text-gray-600 line-clamp-2">
-                      {bug.actual_results || "N/A"}
+                      {bug.actual_result || "N/A"}
                     </p>
                   </td>
 
@@ -343,7 +343,7 @@ const removeStep = (index: number) => {
     onChange={(e) =>
       setNewBug({
         ...newBug,
-        actual_results: e.target.value,
+        actual_result: e.target.value,
       })
     }
   />
@@ -447,11 +447,11 @@ const removeStep = (index: number) => {
       <textarea
         placeholder="Actual Results"
         className="border p-2 w-full mb-2"
-        value={editingBug.actual_results}
+        value={editingBug.actual_result}
         onChange={(e) =>
           setEditingBug({
             ...editingBug,
-            actual_results: e.target.value,
+            actual_result: e.target.value,
           })
         }
       />
@@ -475,10 +475,10 @@ const removeStep = (index: number) => {
       {/* UPDATE BUTTON */}
       <button
         onClick={() => {
-          updateMutation.mutate({
-            id: editingBug.uuid,
-            data: {
-              ...editingBug,
+         updateMutation.mutate({
+  uuid: editingBug.uuid,
+  data: {
+    ...editingBug,
               steps_to_reproduce: steps
   .map((s) => s.trim())
   .filter((s) => s.length > 0)
