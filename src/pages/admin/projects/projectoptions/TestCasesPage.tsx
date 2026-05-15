@@ -106,7 +106,6 @@ const removeStep = (index: number) => {
  
     setSteps([""]);
  
-    // optional (good UX)
     setNewTestCase({
       title: "",
       description: "",
@@ -121,13 +120,13 @@ const removeStep = (index: number) => {
   const updateMutation = useMutation({
   mutationFn: updateTestCase,
   onSuccess: () => {
-    // ✅ refresh table data
+    // refresh table data
     queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
  
-    // ✅ close edit modal
+    // close edit modal
     setIsEditModalOpen(false);
  
-    // ✅ reset editing state (important)
+    // reset editing state (important)
     setEditingTestCase(null);
   },
 });
@@ -148,7 +147,7 @@ const removeStep = (index: number) => {
     tc.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
  
-  // ✅ DOWNLOAD TEMPLATE
+  // DOWNLOAD TEMPLATE
   const downloadTemplate = () => {
     const worksheet = XLSX.utils.json_to_sheet([
       {

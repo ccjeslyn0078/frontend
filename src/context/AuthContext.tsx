@@ -31,18 +31,18 @@ export const AuthProvider = ({ children }: any) => {
 
   const isAuthenticated = !!token;
 
-  // ✅ FETCH CURRENT USER (/me)
+  //  FETCH CURRENT USER (/me)
   const fetchUser = async () => {
     try {
       const res = await API("/users/me/", { method: "GET" }, true);
 
       setUser(res);
 
-      // 🔥🔥 CRITICAL FIX — STORE ROLE IN LOCALSTORAGE
+      //STORE ROLE IN LOCALSTORAGE
       localStorage.setItem(
         "user",
         JSON.stringify({
-          role: res?.role?.toLowerCase() || "admin", // fallback safety
+          role: res?.role?.toLowerCase() || "admin", 
         })
       );
 
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: any) => {
     }
   };
 
-  // ✅ AUTO FETCH ON APP LOAD
+  //  AUTO FETCH ON APP LOAD
   useEffect(() => {
     if (token) {
       fetchUser();
@@ -63,7 +63,7 @@ export const AuthProvider = ({ children }: any) => {
     }
   }, [token]);
 
-  // ✅ LOGIN
+  // LOGIN
   const login = async (data: any) => {
     const res = await API(
       "/users/login/",
@@ -79,11 +79,11 @@ export const AuthProvider = ({ children }: any) => {
     localStorage.setItem("access", accessToken);
     setToken(accessToken);
 
-    // 🔥 Fetch user → also stores role now
+    // Fetch user → also stores role now
     await fetchUser();
   };
 
-  // ✅ REGISTER
+  // REGISTER
   const register = async (data: any) => {
     await API(
       "/users/register/",
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }: any) => {
     );
   };
 
-  // ✅ LOGOUT
+  // LOGOUT
   const logout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("user");
