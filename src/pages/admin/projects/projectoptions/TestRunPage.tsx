@@ -6,9 +6,9 @@ import { useParams, Link } from "react-router-dom";
 
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  createTestRunVersion,
+import { 
   getTestRunVersions,
+  getLatestVersion
 } from "@/utils/api/testrunversion.api";
 
 import {
@@ -67,6 +67,11 @@ export default function TestRun() {
   const [selectedVersion, setSelectedVersion] =
     useState("");
 
+  const [
+  isVersionModalOpen,
+  setIsVersionModalOpen,
+] = useState(false);
+
   // =========================================
   // TEST CASES
   // =========================================
@@ -82,9 +87,6 @@ export default function TestRun() {
 
   });
 
-  const testCases = Array.isArray(data)
-    ? data
-    : data?.results || [];
 
   // =========================================
   // VERSIONS
@@ -92,23 +94,60 @@ export default function TestRun() {
 
   const { data: versionsData } = useQuery({
 
-    queryKey: ["testrunversions"],
+  queryKey: [
+    "testrunversions",
+    screenId,
+  ],
 
-    queryFn: getTestRunVersions,
+  queryFn: () =>
+    getTestRunVersions(
+      screenId as string
+    ),
 
-  });
+  enabled: !!screenId,
 
-  const versions = Array.isArray(
-    versionsData
-  )
-    ? versionsData
-    : versionsData?.results || [];
+});
+
+  const { data: latestVersion } = useQuery({
+
+  queryKey: [
+    "latest-version",
+    screenId,
+  ],
+
+  queryFn: () =>
+    getLatestVersion(
+      screenId as string
+    ),
+
+  enabled: !!screenId,
+
+});
+
+ const versions = Array.isArray(
+  versionsData
+)
+  ? versionsData
+  : versionsData?.results || [];
+
+const currentVersion =
+  versions.find(
+    (v: any) =>
+      v.uuid === selectedVersion
+  );
 
    useEffect(() => {
 
   if (
-    versions.length > 0 &&
-    !selectedVersion
+    latestVersion?.uuid
+  ) {
+
+    setSelectedVersion(
+      latestVersion.uuid
+    );
+
+  } else if (
+    versions.length > 0
   ) {
 
     setSelectedVersion(
@@ -117,13 +156,13 @@ export default function TestRun() {
 
   }
 
-}, [versions]);
+}, [latestVersion, versions]);
 
   // =========================================
   // TEST RUNS
   // =========================================
 
-  const { data: runsData, refetch } =
+  const { data: runsData } =
     useQuery({
 
       queryKey: [
@@ -365,47 +404,55 @@ export default function TestRun() {
             Test Run
           </h1>
 
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
 
-            {/* VERSION SELECT */}
+  {/* CURRENT VERSION */}
 
-            <select
+  <div
+    className="
+      bg-white
+      border
+      rounded-xl
+      px-4
+      py-2
+      text-sm
+      font-medium
+    "
+  >
 
-              value={selectedVersion}
+    Current Version :
 
-              onChange={(e) =>
-                setSelectedVersion(
-                  e.target.value
-                )
-              }
+    <span className="ml-2 text-blue-600">
 
-              className="
-                border
-                rounded-xl
-                px-4
-                py-2
-                bg-white
-              "
-            >
+      {currentVersion
+        ?.version_number || "N/A"}
 
-              <option value="">
-                Select Version
-              </option>
+    </span>
 
-              {versions.map((version: any) => (
+  </div>
 
-                <option
-                  key={version.uuid}
-                  value={version.uuid}
-                >
-                  {version.version_number}
-                </option>
+  {/* SWITCH VERSION */}
 
-              ))}
+  <button
 
-            </select>
+    onClick={() =>
+      setIsVersionModalOpen(true)
+    }
 
-          </div>
+    className="
+      bg-black
+      text-white
+      px-4
+      py-2
+      rounded-xl
+    "
+  >
+
+    Switch Version
+
+  </button>
+
+</div>
 
         </div>
 
@@ -457,8 +504,27 @@ export default function TestRun() {
                 >
 
                   <td className="p-3">
-                    {tc.uuid.slice(0, 6)}
-                  </td>
+
+  <div
+    className="
+      inline-flex
+      items-center
+      px-3
+      py-1
+      rounded-md
+      bg-gray-100
+      text-gray-700
+      text-xs
+      font-semibold
+      tracking-wide
+    "
+  >
+
+    {tc.tc_id}
+
+  </div>
+
+</td>
 
                   <td className="p-3">
                     {tc.title}
@@ -721,6 +787,160 @@ export default function TestRun() {
         </div>
 
       )}
+
+      {/* VERSION MODAL */}
+
+{isVersionModalOpen && (
+
+  <div
+    className="
+      fixed
+      inset-0
+      bg-black/30
+      flex
+      items-center
+      justify-center
+      z-50
+    "
+  >
+
+    <div
+      className="
+        bg-white
+        rounded-2xl
+        w-[500px]
+        p-6
+      "
+    >
+
+      {/* HEADER */}
+
+      <div
+        className="
+          flex
+          justify-between
+          items-center
+          mb-6
+        "
+      >
+
+        <h2
+          className="
+            text-xl
+            font-semibold
+          "
+        >
+          Switch Version
+        </h2>
+
+        <button
+          onClick={() =>
+            setIsVersionModalOpen(false)
+          }
+        >
+          ✕
+        </button>
+
+      </div>
+
+      {/* VERSION LIST */}
+
+      <div className="space-y-3">
+
+        {versions.map((version: any) => (
+
+          <button
+
+            key={version.uuid}
+
+            onClick={() => {
+
+              setSelectedVersion(
+                version.uuid
+              );
+
+              setIsVersionModalOpen(
+                false
+              );
+
+            }}
+
+            className={`
+              w-full
+              border
+              rounded-xl
+              p-4
+              text-left
+              transition
+
+              ${
+                selectedVersion ===
+                version.uuid
+
+                  ? "border-black bg-gray-100"
+
+                  : "hover:bg-gray-50"
+              }
+            `}
+          >
+
+            <div
+              className="
+                flex
+                justify-between
+                items-center
+              "
+            >
+
+              <div>
+
+                <p
+                  className="
+                    font-semibold
+                  "
+                >
+                  {version.version_number}
+                </p>
+
+                <p
+                  className="
+                    text-sm
+                    text-gray-500
+                  "
+                >
+                  {version.version_status}
+                </p>
+
+              </div>
+
+              {selectedVersion ===
+                version.uuid && (
+
+                <span
+                  className="
+                    text-sm
+                    text-green-600
+                    font-medium
+                  "
+                >
+                  Active
+                </span>
+
+              )}
+
+            </div>
+
+          </button>
+
+        ))}
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
 
       {/* BUG MODAL */}
 

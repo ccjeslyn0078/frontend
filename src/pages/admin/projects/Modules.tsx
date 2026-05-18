@@ -479,9 +479,38 @@ export function Modules() {
 
             </div>
 
-            <h3 className="font-semibold">
-  {module.name}
-</h3>
+         <div className="space-y-1">
+
+  {/* MODULE NAME */}
+
+  <h3 className="font-semibold text-lg">
+
+    {module.name}
+
+  </h3>
+
+  {/* MODULE CODE */}
+
+  <div
+    className="
+      inline-flex
+      items-center
+      px-2
+      py-1
+      rounded-md
+      bg-blue-100
+      text-blue-700
+      text-xs
+      font-medium
+      w-fit
+    "
+  >
+
+    {module.code}
+
+  </div>
+
+</div>
 
           </div>
 

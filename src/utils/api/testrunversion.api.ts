@@ -17,10 +17,10 @@ async (data: any) => {
 
 // GET ALL
 export const getTestRunVersions =
-async () => {
+async (screenId: string) => {
 
   return API(
-    `/testrun-versions/`,
+    `/testrun-versions/?screen_id=${screenId}`,
     {
       method: "GET",
     }
@@ -58,3 +58,16 @@ async (uuid: string) => {
   );
 
 };
+
+export const getLatestVersion =
+async (screenId: string) => {
+
+  return API(
+    `/testrun-versions/latest/?screen_id=${screenId}`,
+    {
+      method: "GET",
+    }
+  );
+
+};
+
