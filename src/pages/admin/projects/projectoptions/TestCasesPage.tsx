@@ -106,7 +106,6 @@ const removeStep = (index: number) => {
  
     setSteps([""]);
  
-    // optional (good UX)
     setNewTestCase({
       title: "",
       description: "",
@@ -121,13 +120,13 @@ const removeStep = (index: number) => {
   const updateMutation = useMutation({
   mutationFn: updateTestCase,
   onSuccess: () => {
-    // ✅ refresh table data
+    // refresh table data
     queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
  
-    // ✅ close edit modal
+    // close edit modal
     setIsEditModalOpen(false);
  
-    // ✅ reset editing state (important)
+    // reset editing state (important)
     setEditingTestCase(null);
   },
 });
@@ -185,7 +184,7 @@ const removeStep = (index: number) => {
     tc.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
  
-  // ✅ DOWNLOAD TEMPLATE
+  // DOWNLOAD TEMPLATE
   const downloadTemplate = () => {
     const worksheet = XLSX.utils.json_to_sheet([
       {
@@ -374,99 +373,411 @@ queryClient.invalidateQueries({ queryKey: ["testcases", screenId] });
       </div>
  
       {/* TABLE */}
-      <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-     <thead className="bg-gray-50 border-b">
-  <tr>
-    <th className="px-4 py-3 text-left">Title</th>
-    <th className="px-4 py-3 text-left">Description</th>
-    <th className="px-4 py-3 text-left">Steps</th>
-    <th className="px-4 py-3 text-left">Expected</th>
-    <th className="px-4 py-3 text-left">Priority</th>
-    <th className="px-4 py-3 text-left">Type</th>
-    {(canEdit || canDelete) && (
-  <th className="px-4 py-3 text-right">Actions</th>
-)}
-  </tr>
-</thead>
- 
-          <tbody className="divide-y">
-            {filtered.map((tc: any) => (
-              <tr key={tc.uuid} className="hover:bg-gray-50">
-               <td className="px-4 py-3">{tc.title}</td>
- 
-<td className="px-4 py-3">{tc.description}</td>
- 
-<td className="px-4 py-3">
-  {tc.steps && typeof tc.steps === "object" && Object.keys(tc.steps).length > 0 ? (
-    <div className="space-y-1">
-      {Object.entries(tc.steps).map(([key, value]: any, index) => (
-  <div key={key} className="text-xs">
-    <span className="font-medium">
-      Step {index + 1}:
-    </span>{" "}
-    {value}
-  </div>
-))}
-    </div>
-  ) : (
-    <span className="text-gray-400 text-xs">No steps</span>
-  )}
-</td>
- 
-<td className="px-4 py-3">{tc.expected_results}</td>
- 
-<td className="px-4 py-3">
-  <span className={priorityStyles[tc.priority]}>
-    {tc.priority}
-  </span>
-</td>
- 
-<td className="px-4 py-3">
-  {tc.type_of_testcase}
-</td>
- 
-<td className="px-4 py-3 flex justify-end gap-3">
 
-  {canEdit && (
-    <button
-      onClick={() => {
-        setEditingTestCase(tc);
+<div className="bg-white rounded-xl border shadow-sm overflow-hidden">
 
-        if (tc.steps && typeof tc.steps === "object") {
-          setSteps(Object.values(tc.steps));
-        } else {
-          setSteps([""]);
-        }
+  <table className="w-full text-sm">
 
-        setIsEditModalOpen(true);
-      }}
-    >
-      <Pencil className="w-4 h-4 text-gray-700 cursor-pointer" />
-    </button>
-  )}
+    {/* TABLE HEADER */}
 
-  {canDelete && (
-    <button
-      onClick={() => {
-        if (window.confirm("Are you sure you want to delete this test case?")) {
-          deleteMutation.mutate(tc.uuid);
-        }
-      }}
-    >
-      <Trash2 className="w-4 h-4 text-red-500 cursor-pointer" />
-    </button>
-  )}
+    <thead className="bg-gray-50 border-b">
 
-</td>
-              </tr>
-            ))}
- 
- 
-         
-          </tbody>
-        </table>
-      </div>
+      <tr>
+
+        {/* TC ID */}
+
+        <th
+          className="
+            px-6
+            py-4
+            text-left
+            font-semibold
+            text-gray-700
+            w-[15%]
+          "
+        >
+          TC-ID
+        </th>
+
+        {/* TITLE */}
+
+        <th
+          className="
+            px-6
+            py-4
+            text-left
+            font-semibold
+            text-gray-700
+            w-[18%]
+          "
+        >
+          Title
+        </th>
+
+        {/* DESCRIPTION */}
+
+        <th
+          className="
+            px-6
+            py-4
+            text-left
+            font-semibold
+            text-gray-700
+            w-[22%]
+          "
+        >
+          Description
+        </th>
+
+        {/* STEPS */}
+
+        <th
+          className="
+            px-6
+            py-4
+            text-left
+            font-semibold
+            text-gray-700
+            w-[22%]
+          "
+        >
+          Steps
+        </th>
+
+        {/* EXPECTED */}
+
+        <th
+          className="
+            px-6
+            py-4
+            text-left
+            font-semibold
+            text-gray-700
+            w-[18%]
+          "
+        >
+          Expected
+        </th>
+
+        {/* PRIORITY */}
+
+        <th
+          className="
+            px-6
+            py-4
+            text-left
+            font-semibold
+            text-gray-700
+            w-[10%]
+          "
+        >
+          Priority
+        </th>
+
+        {/* TYPE */}
+
+        <th
+          className="
+            px-6
+            py-4
+            text-left
+            font-semibold
+            text-gray-700
+            w-[12%]
+          "
+        >
+          Type
+        </th>
+
+        {/* ACTIONS */}
+
+        {(canEdit || canDelete) && (
+
+          <th
+            className="
+              px-8
+              py-4
+              text-center
+              font-semibold
+              text-gray-700
+              w-[10%]
+            "
+          >
+            Actions
+          </th>
+
+        )}
+
+      </tr>
+
+    </thead>
+
+    {/* TABLE BODY */}
+
+    <tbody className="divide-y">
+
+      {filtered.map((tc: any) => (
+
+        <tr
+          key={tc.uuid}
+          className="
+            hover:bg-gray-50
+            transition
+          "
+        >
+
+          {/* TC ID */}
+
+          <td className="px-6 py-5">
+
+            <div
+              className="
+                inline-flex
+                items-center
+                px-3
+                py-1
+                rounded-md
+                bg-gray-100
+                text-gray-700
+                text-xs
+                font-semibold
+                tracking-wide
+              "
+            >
+
+              {tc.tc_id}
+
+            </div>
+
+          </td>
+
+          {/* TITLE */}
+
+          <td
+            className="
+              px-6
+              py-5
+              font-medium
+              text-gray-800
+            "
+          >
+
+            {tc.title}
+
+          </td>
+
+          {/* DESCRIPTION */}
+
+          <td
+            className="
+              px-6
+              py-5
+              text-gray-700
+            "
+          >
+
+            {tc.description}
+
+          </td>
+
+          {/* STEPS */}
+
+          <td className="px-6 py-5">
+
+            {tc.steps &&
+            typeof tc.steps === "object" &&
+            Object.keys(tc.steps).length > 0 ? (
+
+              <div className="space-y-2">
+
+                {Object.entries(tc.steps).map(
+                  ([key, value]: any, index) => (
+
+                    <div
+                      key={key}
+                      className="
+                        text-xs
+                        text-gray-700
+                      "
+                    >
+
+                      <span className="font-semibold">
+
+                        Step {index + 1}:
+
+                      </span>{" "}
+
+                      {value}
+
+                    </div>
+
+                  )
+                )}
+
+              </div>
+
+            ) : (
+
+              <span
+                className="
+                  text-gray-400
+                  text-xs
+                "
+              >
+                No steps
+              </span>
+
+            )}
+
+          </td>
+
+          {/* EXPECTED */}
+
+          <td
+            className="
+              px-6
+              py-5
+              text-gray-700
+            "
+          >
+
+            {tc.expected_results}
+
+          </td>
+
+          {/* PRIORITY */}
+
+          <td className="px-6 py-5">
+
+            <span
+              className={
+                priorityStyles[
+                  tc.priority
+                ]
+              }
+            >
+
+              {tc.priority}
+
+            </span>
+
+          </td>
+
+          {/* TYPE */}
+
+          <td
+            className="
+              px-6
+              py-5
+              text-gray-700
+            "
+          >
+
+            {tc.type_of_testcase}
+
+          </td>
+
+          {/* ACTIONS */}
+
+          {(canEdit || canDelete) && (
+
+            <td className="px-8 py-5">
+
+              <div
+                className="
+                  flex
+                  items-center
+                  justify-center
+                  gap-4
+                "
+              >
+
+                {canEdit && (
+
+                  <button
+                    onClick={() => {
+
+                      setEditingTestCase(tc);
+
+                      if (
+                        tc.steps &&
+                        typeof tc.steps === "object"
+                      ) {
+
+                        setSteps(
+                          Object.values(tc.steps)
+                        );
+
+                      } else {
+
+                        setSteps([""]);
+
+                      }
+
+                      setIsEditModalOpen(true);
+
+                    }}
+                    className="
+                      text-gray-700
+                      hover:text-black
+                      transition
+                      cursor-pointer
+                    "
+                  >
+
+                    <Pencil className="w-4 h-4" />
+
+                  </button>
+
+                )}
+
+                {canDelete && (
+
+                  <button
+                    onClick={() => {
+
+                      if (
+                        window.confirm(
+                          "Are you sure you want to delete this test case?"
+                        )
+                      ) {
+
+                        deleteMutation.mutate(
+                          tc.uuid
+                        );
+
+                      }
+
+                    }}
+                    className="
+                      text-red-500
+                      hover:text-red-700
+                      transition
+                      cursor-pointer
+                    "
+                  >
+
+                    <Trash2 className="w-4 h-4" />
+
+                  </button>
+
+                )}
+
+              </div>
+
+            </td>
+
+          )}
+
+        </tr>
+
+      ))}
+
+    </tbody>
+
+  </table>
+
+</div>
       
     
 <Modal
